@@ -1,5 +1,0 @@
-discord.py
-requests
-pyotp
-os
-sys
