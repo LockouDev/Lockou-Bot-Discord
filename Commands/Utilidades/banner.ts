@@ -1,88 +1,123 @@
-import { InteractionContextType, SlashCommandBuilder, AttachmentBuilder, CommandInteraction, ImageURLOptions, ApplicationIntegrationType, CacheType, User, MessageFlags } from 'discord.js';
+import {
+    InteractionContextType,
+    SlashCommandBuilder,
+    AttachmentBuilder,
+    CommandInteraction,
+    ApplicationIntegrationType,
+    User,
+} from 'discord.js';
 
-module.exports = {
-
+const command = {
     data: new SlashCommandBuilder()
-
         .setName('banner')
         .setDescription('Veja o banner de um usuário')
         .setIntegrationTypes(ApplicationIntegrationType.GuildInstall, ApplicationIntegrationType.UserInstall)
         .setContexts(InteractionContextType.Guild, InteractionContextType.BotDM, InteractionContextType.PrivateChannel)
-        .addUserOption(option =>
-            option.setName('usuário')
-                .setDescription('Usuário para ver a banner')
-                .setRequired(false))
-        .addStringOption(option =>
-            option.setName('id')
-                .setDescription('ID do usuário para ver a banner (caso não esteja em comum)')
-                .setRequired(false)),
+        .addUserOption((option) =>
+            option
+                .setName('usuario')
+                .setDescription('Usuário para ver o banner')
+                .setRequired(false),
+        )
+        .addStringOption((option) =>
+            option
+                .setName('id')
+                .setDescription('ID do usuário para ver o banner')
+                .setRequired(false),
+        ),
 
     async run(client: any, interaction: CommandInteraction) {
+        if (!interaction.isChatInputCommand()) {
+            return;
+        }
 
-        if (!interaction.isChatInputCommand()) return;
+        const isInteractionAlreadyAcknowledged = (error: any): boolean =>
+            error?.code === 40060 || error?.rawError?.code === 40060;
+        const isUnknownInteraction = (error: any): boolean =>
+            error?.code === 10062 || error?.rawError?.code === 10062;
+        const isInteractionNotReplied = (error: any): boolean => error?.code === 'InteractionNotReplied';
+        const isIgnorableInteractionError = (error: any): boolean =>
+            isInteractionAlreadyAcknowledged(error) || isUnknownInteraction(error) || isInteractionNotReplied(error);
+
+        const ensureInteractionAcknowledged = async (): Promise<boolean> => {
+            if (interaction.deferred || interaction.replied) {
+                return true;
+            }
+
+            try {
+                await interaction.deferReply();
+                return true;
+            } catch (error) {
+                if (isIgnorableInteractionError(error)) {
+                    return false;
+                }
+
+                throw error;
+            }
+        };
+
+        const respond = async (payload: any) => {
+            const canReply = await ensureInteractionAcknowledged();
+            if (!canReply) {
+                return;
+            }
+
+            try {
+                await interaction.editReply(payload);
+            } catch (error) {
+                if (isIgnorableInteractionError(error)) {
+                    return;
+                }
+
+                throw error;
+            }
+        };
+
+        const canReply = await ensureInteractionAcknowledged();
+        if (!canReply) {
+            return;
+        }
 
         try {
-
-            let user: User | null = interaction.options.getUser('usuário');
+            let user: User | null = interaction.options.getUser('usuario');
             const id = interaction.options.getString('id');
 
             if (!user && id) {
-
                 try {
-
                     user = await client.users.fetch(id);
-
                 } catch {
-
-                    return interaction.reply({
-
-                        content: '❌ Não encontrei nenhum usuário com esse ID',
-                        flags: MessageFlags.Ephemeral
-
+                    await respond({
+                        content: 'Não encontrei nenhum usuário com esse ID',
                     });
-
+                    return;
                 }
-
             }
 
-            if (!user) user = interaction.user;
+            if (!user) {
+                user = interaction.user;
+            }
 
             const fetchedUser = await client.users.fetch(user.id, { force: true });
-            const bannerUrl = fetchedUser.bannerURL({ size: 4096, extension: 'png' })
+            const bannerUrl = fetchedUser.bannerURL({ size: 4096, extension: 'png' });
 
             if (!bannerUrl) {
-
-                return await interaction.reply({
-
-                    content: `❌ O usuário **${user.username}** não possui um banner`,
-                    flags: MessageFlags.Ephemeral
-
+                await respond({
+                    content: `O usuário **${user.username}** não possui banner`,
                 });
-
+                return;
             }
 
             const extension = bannerUrl.includes('.gif') ? 'gif' : 'png';
-            const attachment = new AttachmentBuilder(bannerUrl).setName(
+            const attachment = new AttachmentBuilder(bannerUrl).setName(`banner_${user.username}.${extension}`);
 
-                `banner_${user.username}.${extension}`
-
-            );
-
-            await interaction.reply({ files: [attachment] });
-
+            await respond({ files: [attachment] });
         } catch (error) {
-
             console.error('Erro no comando /banner:', error);
-
-            await interaction.reply({
-
-                content: '❌ Erro ao exibir o avatar, Tente novamente mais tarde',
-                flags: MessageFlags.Ephemeral
-
+            await respond({
+                content: 'Erro ao exibir o banner. Tente novamente mais tarde',
             });
-
         }
+    },
+};
 
-    }
-
-}
+export default command;

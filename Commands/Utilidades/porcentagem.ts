@@ -1,4 +1,4 @@
-import {
+﻿import {
     InteractionContextType,
     SlashCommandBuilder,
     EmbedBuilder,
@@ -6,7 +6,7 @@ import {
     ApplicationIntegrationType
 } from 'discord.js';
 
-module.exports = {
+const command = {
 
     data: new SlashCommandBuilder()
 
@@ -56,3 +56,6 @@ module.exports = {
     },
 
 };
+
+export default command;
+

@@ -1,0 +1,75 @@
+#!/usr/bin/env node
+
+const { spawnSync } = require('node:child_process');
+const fs = require('node:fs');
+const path = require('node:path');
+
+const args = process.argv.slice(2);
+const candidates = [
+    process.env.BUN_BIN,
+    path.join(process.cwd(), 'node_modules', 'bun', 'bin', 'bun'),
+    path.join(process.cwd(), 'node_modules', 'bun', 'bin', 'bun.exe'),
+    path.join(__dirname, 'node_modules', 'bun', 'bin', 'bun'),
+    path.join(__dirname, 'node_modules', 'bun', 'bin', 'bun.exe'),
+    '/home/node/node_modules/bun/bin/bun',
+    path.join(process.cwd(), 'node_modules', '.bin', 'bun'),
+    path.join(process.cwd(), 'node_modules', '.bin', 'bun.cmd'),
+    path.join(__dirname, 'node_modules', '.bin', 'bun'),
+    path.join(__dirname, 'node_modules', '.bin', 'bun.cmd'),
+    '/home/node/node_modules/.bin/bun',
+    '/home/node/.npm-global/bin/bun',
+    '/usr/local/bin/bun',
+    '/usr/bin/bun',
+    '/home/node/.bun/bin/bun',
+    '/root/.bun/bin/bun',
+].filter(Boolean);
+
+function canExecute(binaryPath) {
+    if (process.platform === 'win32' && binaryPath.endsWith('.cmd')) {
+        return fs.existsSync(binaryPath);
+    }
+
+    if (binaryPath === 'bun') {
+        const test = spawnSync('bun', ['--version'], { stdio: 'ignore', env: process.env });
+        return !test.error && test.status === 0;
+    }
+
+    return fs.existsSync(binaryPath);
+}
+
+function resolveBunBinary() {
+    for (const candidate of candidates) {
+        if (canExecute(candidate)) {
+            return candidate;
+        }
+    }
+
+    if (canExecute('bun')) {
+        return 'bun';
+    }
+
+    return null;
+}
+
+const bunBinary = resolveBunBinary();
+
+if (!bunBinary) {
+    console.error(
+        `[BUN WRAPPER] Bun nao foi encontrado no ambiente. Caminhos verificados: ${candidates.join(
+            ', ',
+        )}`,
+    );
+    process.exit(1);
+}
+
+const result = spawnSync(bunBinary, args, {
+    stdio: 'inherit',
+    env: process.env,
+});
+
+if (result.error) {
+    console.error('[BUN WRAPPER] Falha ao iniciar o Bun:', result.error.message);
+    process.exit(1);
+}
+
+process.exit(result.status ?? 1);
