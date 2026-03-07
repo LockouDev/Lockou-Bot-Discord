@@ -1,4 +1,4 @@
-﻿import 'dotenv/config';
+import 'dotenv/config';
 import {
     InteractionContextType,
     EmbedBuilder,
@@ -7,35 +7,33 @@ import {
     ApplicationIntegrationType,
     MessageFlags,
 } from 'discord.js';
-import { MercadoPagoConfig, Payment } from 'mercadopago';
-import fs from 'node:fs';
-import path from 'node:path';
-import sharp from 'sharp';
+import Fs from 'node:fs';
+import Path from 'node:path';
 
 type Authorization = {
     userId: string;
     commandName: string;
 };
 
-const filePath = path.join(process.cwd(), 'Registro', 'autorizacoes.json');
+const FilePath = Path.join(process.cwd(), 'Registro', 'autorizacoes.json');
 
-function loadAuthorizations(): Authorization[] {
-    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+function LoadAuthorizations(): Authorization[] {
+    Fs.mkdirSync(Path.dirname(FilePath), { recursive: true });
 
-    if (!fs.existsSync(filePath)) {
-        fs.writeFileSync(filePath, '[]', 'utf-8');
+    if (!Fs.existsSync(FilePath)) {
+        Fs.writeFileSync(FilePath, '[]', 'utf-8');
     }
 
     try {
-        const data = fs.readFileSync(filePath, 'utf-8');
-        const parsed = JSON.parse(data);
-        return Array.isArray(parsed) ? parsed : [];
+        const Data = Fs.readFileSync(FilePath, 'utf-8');
+        const Parsed = JSON.parse(Data);
+        return Array.isArray(Parsed) ? Parsed : [];
     } catch {
         return [];
     }
 }
 
-const command = {
+const Command = {
     data: new SlashCommandBuilder()
         .setName('gerarpix')
         .setDescription('Gerar pix')
@@ -45,129 +43,132 @@ const command = {
             InteractionContextType.BotDM,
             InteractionContextType.PrivateChannel,
         )
-        .addNumberOption((option) =>
-            option
+        .addNumberOption((Option) =>
+            Option
                 .setName('valor')
                 .setDescription('Valor em Real Brasileiro')
                 .setRequired(true),
         )
-        .addStringOption((option) =>
-            option
+        .addStringOption((Option) =>
+            Option
                 .setName('descricao')
-                .setDescription('Descrição do PIX')
+                .setDescription('Descricao do PIX')
                 .setRequired(true),
         ),
 
-    async run(_client: any, interaction: any) {
-        const botOwnerId = process.env.BOT_OWNER;
-        const authorizations = loadAuthorizations();
+    async run(_client: any, Interaction: any) {
+        const BotOwnerId = process.env.BOT_OWNER;
+        const Authorizations = LoadAuthorizations();
 
-        const isAuthorized =
-            interaction.user.id === botOwnerId ||
-            authorizations.some(
-                (authorization) =>
-                    authorization.userId === interaction.user.id &&
-                    authorization.commandName === 'gerarpix',
+        const IsAuthorized =
+            Interaction.user.id === BotOwnerId ||
+            Authorizations.some(
+                (Authorization) =>
+                    Authorization.userId === Interaction.user.id &&
+                    Authorization.commandName === 'gerarpix',
             );
 
-        if (!isAuthorized) {
-            const embed = new EmbedBuilder()
+        if (!IsAuthorized) {
+            const Embed = new EmbedBuilder()
                 .setColor('Red')
                 .setTitle('Acesso negado')
                 .setDescription(
-                    'Voce não está autorizado(a) a usar este comando, Solicite permissão ao dono do bot',
+                    'Voce nao esta autorizado(a) a usar este comando, Solicite permissao ao dono do bot',
                 );
 
-            await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+            await Interaction.reply({ embeds: [Embed], flags: MessageFlags.Ephemeral });
             return;
         }
 
-        const amount = interaction.options.getNumber('valor');
-        if (!amount || amount <= 0) {
-            await interaction.reply({
+        const Amount = Interaction.options.getNumber('valor');
+        if (!Amount || Amount <= 0) {
+            await Interaction.reply({
                 content: 'O valor deve ser maior que zero',
                 flags: MessageFlags.Ephemeral,
             });
             return;
         }
 
-        const description = interaction.options.getString('descricao');
-        if (!description) {
-            await interaction.reply({
+        const Description = Interaction.options.getString('descricao');
+        if (!Description) {
+            await Interaction.reply({
                 content: 'Descricao invalida',
                 flags: MessageFlags.Ephemeral,
             });
             return;
         }
 
-        const accessToken = process.env.MERCADO_PAGO_ACCESS_TEST_TOKEN;
-        const payerEmail = process.env.MERCADO_PAGO_EMAIL;
-        if (!accessToken || !payerEmail) {
-            await interaction.reply({
+        const AccessToken = process.env.MERCADO_PAGO_ACCESS_TEST_TOKEN;
+        const PayerEmail = process.env.MERCADO_PAGO_EMAIL;
+        if (!AccessToken || !PayerEmail) {
+            await Interaction.reply({
                 content: 'Credenciais do Mercado Pago nao configuradas no .env',
                 flags: MessageFlags.Ephemeral,
             });
             return;
         }
 
-        const paymentClient = new MercadoPagoConfig({
-            accessToken,
-            options: { timeout: 5000 },
-        });
-
-        const payment = new Payment(paymentClient);
-
         try {
-            await interaction.deferReply();
+            await Interaction.deferReply();
 
-            const response = await payment.create({
+            const [{ MercadoPagoConfig, Payment: MercadoPagoPayment }, SharpModule] = await Promise.all([
+                import('mercadopago'),
+                import('sharp'),
+            ]);
+            const Sharp = SharpModule.default;
+
+            const PaymentClient = new MercadoPagoConfig({
+                accessToken: AccessToken,
+                options: { timeout: 5000 },
+            });
+
+            const PaymentInstance = new MercadoPagoPayment(PaymentClient);
+
+            const Response = await PaymentInstance.create({
                 body: {
-                    transaction_amount: amount,
-                    description,
+                    transaction_amount: Amount,
+                    description: Description,
                     payment_method_id: 'pix',
-                    payer: { email: payerEmail },
+                    payer: { email: PayerEmail },
                 },
             });
 
-            const transactionData = (response as any)?.point_of_interaction?.transaction_data;
-            const qrCodeBase64 = transactionData?.qr_code_base64 as string | undefined;
-            const copyPasteCode = transactionData?.qr_code as string | undefined;
+            const TransactionData = (Response as any)?.point_of_interaction?.transaction_data;
+            const QrCodeBase64 = TransactionData?.qr_code_base64 as string | undefined;
+            const CopyPasteCode = TransactionData?.qr_code as string | undefined;
 
-            if (!qrCodeBase64 || !copyPasteCode) {
+            if (!QrCodeBase64 || !CopyPasteCode) {
                 throw new Error('Resposta do Mercado Pago sem QR Code de PIX');
             }
 
-            const qrCodePath = path.join(__dirname, 'qrcode.png');
-            const qrCodeBuffer = Buffer.from(qrCodeBase64, 'base64');
+            const QrCodeBuffer = Buffer.from(QrCodeBase64, 'base64');
+            const ResizedQrCode = await Sharp(QrCodeBuffer).resize(256, 256).png().toBuffer();
 
-            await sharp(qrCodeBuffer).resize(256, 256).toFile(qrCodePath);
-
-            const attachment = new AttachmentBuilder(qrCodePath);
-            const embed = new EmbedBuilder()
+            const Attachment = new AttachmentBuilder(ResizedQrCode, { name: 'qrcode.png' });
+            const Embed = new EmbedBuilder()
                 .setColor('#4DB6AC')
-                .setTitle(`Valor: R$ ${amount.toFixed(2)}`)
-                .setDescription(`PIX Copiar e Colar\n\`\`\`${copyPasteCode}\`\`\``)
+                .setTitle(`Valor: R$ ${Amount.toFixed(2)}`)
+                .setDescription(`PIX Copiar e Colar\n\`\`\`${CopyPasteCode}\`\`\``)
                 .addFields([
                     {
-                        name: 'Descrição do Pagamento',
-                        value: `\`\`${description}\`\``,
+                        name: 'Descricao do Pagamento',
+                        value: `\`\`${Description}\`\``,
                         inline: false,
                     },
                 ])
                 .setImage('attachment://qrcode.png');
 
-            await interaction.editReply({ embeds: [embed], files: [attachment] });
-            fs.unlinkSync(qrCodePath);
-        } catch (error) {
-            console.error('[GERARPIX] Falha ao gerar pagamento PIX:', error);
-            if (interaction.deferred || interaction.replied) {
-                await interaction.editReply({
+            await Interaction.editReply({ embeds: [Embed], files: [Attachment] });
+        } catch (Error) {
+            console.error('[GERARPIX] Falha ao gerar pagamento PIX:', Error);
+            if (Interaction.deferred || Interaction.replied) {
+                await Interaction.editReply({
                     content: 'Ocorreu um erro ao gerar o pagamento via PIX, Tente novamente mais tarde',
                 });
                 return;
             }
 
-            await interaction.reply({
+            await Interaction.reply({
                 content: 'Ocorreu um erro ao gerar o pagamento via PIX, Tente novamente mais tarde',
                 flags: MessageFlags.Ephemeral,
             });
@@ -175,5 +176,4 @@ const command = {
     },
 };
 
-export default command;
-
+export default Command;

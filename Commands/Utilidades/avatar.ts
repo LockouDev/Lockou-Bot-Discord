@@ -9,114 +9,114 @@ import {
     User,
 } from 'discord.js';
 
-const command = {
+const Command = {
     data: new SlashCommandBuilder()
         .setName('avatar')
         .setDescription('Veja o avatar de um usuário')
         .setIntegrationTypes(ApplicationIntegrationType.GuildInstall, ApplicationIntegrationType.UserInstall)
         .setContexts(InteractionContextType.Guild, InteractionContextType.BotDM, InteractionContextType.PrivateChannel)
-        .addUserOption((option) =>
-            option
+        .addUserOption((Option) =>
+            Option
                 .setName('usuario')
                 .setDescription('Para ver o avatar do usuário')
                 .setRequired(false),
         )
-        .addStringOption((option) =>
-            option
+        .addStringOption((Option) =>
+            Option
                 .setName('id')
                 .setDescription('ID do usuário para ver o avatar')
                 .setRequired(false),
         ),
 
-    async run(client: any, interaction: CommandInteraction<CacheType>) {
-        if (!interaction.isChatInputCommand()) {
+    async run(Client: any, Interaction: CommandInteraction<CacheType>) {
+        if (!Interaction.isChatInputCommand()) {
             return;
         }
 
-        const isInteractionAlreadyAcknowledged = (error: any): boolean =>
-            error?.code === 40060 || error?.rawError?.code === 40060;
-        const isUnknownInteraction = (error: any): boolean =>
-            error?.code === 10062 || error?.rawError?.code === 10062;
-        const isInteractionNotReplied = (error: any): boolean => error?.code === 'InteractionNotReplied';
-        const isIgnorableInteractionError = (error: any): boolean =>
-            isInteractionAlreadyAcknowledged(error) || isUnknownInteraction(error) || isInteractionNotReplied(error);
+        const IsInteractionAlreadyAcknowledged = (Error: any): boolean =>
+            Error?.code === 40060 || Error?.rawError?.code === 40060;
+        const IsUnknownInteraction = (Error: any): boolean =>
+            Error?.code === 10062 || Error?.rawError?.code === 10062;
+        const IsInteractionNotReplied = (Error: any): boolean => Error?.code === 'InteractionNotReplied';
+        const IsIgnorableInteractionError = (Error: any): boolean =>
+            IsInteractionAlreadyAcknowledged(Error) || IsUnknownInteraction(Error) || IsInteractionNotReplied(Error);
 
-        const ensureInteractionAcknowledged = async (): Promise<boolean> => {
-            if (interaction.deferred || interaction.replied) {
+        const EnsureInteractionAcknowledged = async (): Promise<boolean> => {
+            if (Interaction.deferred || Interaction.replied) {
                 return true;
             }
 
             try {
-                await interaction.deferReply();
+                await Interaction.deferReply();
                 return true;
-            } catch (error) {
-                if (isIgnorableInteractionError(error)) {
+            } catch (Error) {
+                if (IsIgnorableInteractionError(Error)) {
                     return false;
                 }
 
-                throw error;
+                throw Error;
             }
         };
 
-        const respond = async (payload: any) => {
-            const canReply = await ensureInteractionAcknowledged();
-            if (!canReply) {
+        const Respond = async (Payload: any) => {
+            const CanReply = await EnsureInteractionAcknowledged();
+            if (!CanReply) {
                 return;
             }
 
             try {
-                await interaction.editReply(payload);
-            } catch (error) {
-                if (isIgnorableInteractionError(error)) {
+                await Interaction.editReply(Payload);
+            } catch (Error) {
+                if (IsIgnorableInteractionError(Error)) {
                     return;
                 }
 
-                throw error;
+                throw Error;
             }
         };
 
-        const canReply = await ensureInteractionAcknowledged();
-        if (!canReply) {
+        const CanReply = await EnsureInteractionAcknowledged();
+        if (!CanReply) {
             return;
         }
 
         try {
-            let user: User | null = interaction.options.getUser('usuario');
-            const id = interaction.options.getString('id');
+            let User: User | null = Interaction.options.getUser('usuario');
+            const Id = Interaction.options.getString('id');
 
-            if (!user && id) {
+            if (!User && Id) {
                 try {
-                    user = await client.users.fetch(id);
+                    User = await Client.users.fetch(Id);
                 } catch {
-                    await respond({
+                    await Respond({
                         content: 'Não encontrei nenhum usuário com esse ID',
                     });
                     return;
                 }
             }
 
-            if (!user) {
-                user = interaction.user;
+            if (!User) {
+                User = Interaction.user;
             }
 
-            const avatarOptions: ImageURLOptions = {
+            const AvatarOptions: ImageURLOptions = {
                 size: 4096,
-                extension: user.avatar?.startsWith('a_') ? 'gif' : 'png',
+                extension: User.avatar?.startsWith('a_') ? 'gif' : 'png',
             };
 
-            const imageURL = user.displayAvatarURL(avatarOptions);
-            const attachment = new AttachmentBuilder(imageURL).setName(
-                `avatar_${user.username}.${avatarOptions.extension}`,
+            const ImageURL = User.displayAvatarURL(AvatarOptions);
+            const Attachment = new AttachmentBuilder(ImageURL).setName(
+                `avatar_${User.username}.${AvatarOptions.extension}`,
             );
 
-            await respond({ files: [attachment] });
-        } catch (error) {
-            console.error('Erro no comando /avatar:', error);
-            await respond({
+            await Respond({ files: [Attachment] });
+        } catch (Error) {
+            console.error('Erro no comando /avatar:', Error);
+            await Respond({
                 content: 'Erro ao exibir o avatar. Tente novamente mais tarde',
             });
         }
     },
 };
 
-export default command;
+export default Command;

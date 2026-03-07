@@ -9,7 +9,7 @@ import {
 type Currency = { code: string; name: string };
 type CachedQuote = { ask: number; updatedAt: string; timestamp: number };
 
-const currencies: Currency[] = [
+const Currencies: Currency[] = [
     { code: 'BRL', name: 'Real Brasileiro' },
     { code: 'USD', name: 'Dólar Americano' },
     { code: 'EUR', name: 'Euro' },
@@ -36,49 +36,49 @@ const currencies: Currency[] = [
     { code: 'USDT', name: 'Tether (USDT)' },
 ];
 
-const quoteCache = new Map<string, CachedQuote>();
+const QuoteCache = new Map<string, CachedQuote>();
 const QUOTE_CACHE_TTL_MS = 5 * 60 * 1000;
 
-const addCurrencyChoices = (option: any) => {
-    for (const currency of currencies) {
-        option.addChoices({ name: currency.name, value: currency.code });
+const AddCurrencyChoices = (Option: any) => {
+    for (const Currency of Currencies) {
+        Option.addChoices({ name: Currency.name, value: Currency.code });
     }
-    return option;
+    return Option;
 };
 
-function getCachedQuote(cacheKey: string): CachedQuote | null {
-    const cached = quoteCache.get(cacheKey);
-    if (!cached) {
+function GetCachedQuote(CacheKey: string): CachedQuote | null {
+    const Cached = QuoteCache.get(CacheKey);
+    if (!Cached) {
         return null;
     }
 
-    if (Date.now() - cached.timestamp > QUOTE_CACHE_TTL_MS) {
-        quoteCache.delete(cacheKey);
+    if (Date.now() - Cached.timestamp > QUOTE_CACHE_TTL_MS) {
+        QuoteCache.delete(CacheKey);
         return null;
     }
 
-    return cached;
+    return Cached;
 }
 
-function normalizeApiData(data: Record<string, any>): Record<string, any> {
+function NormalizeApiData(Data: Record<string, any>): Record<string, any> {
     return Object.fromEntries(
-        Object.entries(data).map(([key, value]) => [
-            key.replace(/[^a-zA-Z0-9]/g, '').toUpperCase(),
-            value,
+        Object.entries(Data).map(([Key, Value]) => [
+            Key.replace(/[^a-zA-Z0-9]/g, '').toUpperCase(),
+            Value,
         ]),
     ) as Record<string, any>;
 }
 
-function formatDate(value: string): string {
-    const parsed = new Date(value);
-    if (Number.isNaN(parsed.getTime())) {
-        return value;
+function FormatDate(Value: string): string {
+    const Parsed = new Date(Value);
+    if (Number.isNaN(Parsed.getTime())) {
+        return Value;
     }
 
-    return parsed.toLocaleString('pt-BR');
+    return Parsed.toLocaleString('pt-BR');
 }
 
-const command = {
+const Command = {
     data: new SlashCommandBuilder()
         .setName('converter')
         .setDescription('Converte uma moeda para outra usando cotação atual')
@@ -88,115 +88,115 @@ const command = {
             InteractionContextType.BotDM,
             InteractionContextType.PrivateChannel,
         )
-        .addStringOption((option) =>
-            addCurrencyChoices(
-                option
+        .addStringOption((Option) =>
+            AddCurrencyChoices(
+                Option
                     .setName('moeda_local')
                     .setDescription('Moeda de destino')
                     .setRequired(true),
             ),
         )
-        .addStringOption((option) =>
-            addCurrencyChoices(
-                option
+        .addStringOption((Option) =>
+            AddCurrencyChoices(
+                Option
                     .setName('moeda_estrangeira')
                     .setDescription('Moeda de origem')
                     .setRequired(true),
             ),
         ),
 
-    async run(_client: any, interaction: any) {
-        const localCurrency = interaction.options.getString('moeda_local');
-        const sourceCurrency = interaction.options.getString('moeda_estrangeira');
+    async run(_client: any, Interaction: any) {
+        const LocalCurrency = Interaction.options.getString('moeda_local');
+        const SourceCurrency = Interaction.options.getString('moeda_estrangeira');
 
-        const isInteractionAlreadyAcknowledged = (error: any): boolean =>
-            error?.code === 40060 || error?.rawError?.code === 40060;
-        const isUnknownInteraction = (error: any): boolean =>
-            error?.code === 10062 || error?.rawError?.code === 10062;
-        const isInteractionNotReplied = (error: any): boolean => error?.code === 'InteractionNotReplied';
-        const isIgnorableInteractionError = (error: any): boolean =>
-            isInteractionAlreadyAcknowledged(error) || isUnknownInteraction(error) || isInteractionNotReplied(error);
+        const IsInteractionAlreadyAcknowledged = (Error: any): boolean =>
+            Error?.code === 40060 || Error?.rawError?.code === 40060;
+        const IsUnknownInteraction = (Error: any): boolean =>
+            Error?.code === 10062 || Error?.rawError?.code === 10062;
+        const IsInteractionNotReplied = (Error: any): boolean => Error?.code === 'InteractionNotReplied';
+        const IsIgnorableInteractionError = (Error: any): boolean =>
+            IsInteractionAlreadyAcknowledged(Error) || IsUnknownInteraction(Error) || IsInteractionNotReplied(Error);
 
-        const ensureInteractionAcknowledged = async (): Promise<boolean> => {
-            if (interaction.deferred || interaction.replied) {
+        const EnsureInteractionAcknowledged = async (): Promise<boolean> => {
+            if (Interaction.deferred || Interaction.replied) {
                 return true;
             }
 
             try {
-                await interaction.deferReply();
+                await Interaction.deferReply();
                 return true;
-            } catch (error) {
-                if (isIgnorableInteractionError(error)) {
+            } catch (Error) {
+                if (IsIgnorableInteractionError(Error)) {
                     return false;
                 }
 
-                throw error;
+                throw Error;
             }
         };
 
-        const respond = async (payload: any) => {
-            const canReply = await ensureInteractionAcknowledged();
-            if (!canReply) {
+        const Respond = async (Payload: any) => {
+            const CanReply = await EnsureInteractionAcknowledged();
+            if (!CanReply) {
                 return;
             }
 
             try {
-                await interaction.editReply(payload);
-            } catch (error) {
-                if (isIgnorableInteractionError(error)) {
+                await Interaction.editReply(Payload);
+            } catch (Error) {
+                if (IsIgnorableInteractionError(Error)) {
                     return;
                 }
 
-                throw error;
+                throw Error;
             }
         };
 
-        const canReply = await ensureInteractionAcknowledged();
-        if (!canReply) {
+        const CanReply = await EnsureInteractionAcknowledged();
+        if (!CanReply) {
             return;
         }
 
-        if (!localCurrency || !sourceCurrency) {
-            await respond({
+        if (!LocalCurrency || !SourceCurrency) {
+            await Respond({
                 content: 'Selecione as moedas corretamente',
             });
             return;
         }
 
-        const sourceCode = sourceCurrency.trim().toUpperCase();
-        const localCode = localCurrency.trim().toUpperCase();
-        const pairKey = `${sourceCode}${localCode}`;
-        const cacheKey = `${sourceCode}-${localCode}`;
+        const SourceCode = SourceCurrency.trim().toUpperCase();
+        const LocalCode = LocalCurrency.trim().toUpperCase();
+        const PairKey = `${SourceCode}${LocalCode}`;
+        const CacheKey = `${SourceCode}-${LocalCode}`;
 
-        if (sourceCode === localCode) {
-            const embed = new EmbedBuilder()
+        if (SourceCode === LocalCode) {
+            const Embed = new EmbedBuilder()
                 .setColor('Green' as ColorResolvable)
-                .setTitle(`Conversão: ${sourceCode} -> ${localCode}`)
+                .setTitle(`Conversão: ${SourceCode} -> ${LocalCode}`)
                 .addFields(
                     { name: 'Valor atual', value: '1,00', inline: true },
                     { name: 'Última atualização', value: new Date().toLocaleString('pt-BR'), inline: false },
                 );
 
-            await respond({ embeds: [embed] });
+            await Respond({ embeds: [Embed] });
             return;
         }
 
         try {
-            const token = process.env.ECONOMIA_API_KEY;
-            const tokenParam = token ? `?token=${encodeURIComponent(token)}` : '';
-            const apiUrl = `https://economia.awesomeapi.com.br/json/last/${sourceCode}-${localCode}${tokenParam}`;
+            const Token = process.env.ECONOMIA_API_KEY;
+            const TokenParam = Token ? `?token=${encodeURIComponent(Token)}` : '';
+            const ApiUrl = `https://economia.awesomeapi.com.br/json/last/${SourceCode}-${LocalCode}${TokenParam}`;
 
-            const response = await fetch(apiUrl);
-            if (response.status === 429) {
-                const cached = getCachedQuote(cacheKey);
-                if (cached) {
-                    const embed = new EmbedBuilder()
+            const Response = await fetch(ApiUrl);
+            if (Response.status === 429) {
+                const Cached = GetCachedQuote(CacheKey);
+                if (Cached) {
+                    const Embed = new EmbedBuilder()
                         .setColor('Yellow' as ColorResolvable)
-                        .setTitle(`Conversão: ${sourceCode} -> ${localCode}`)
+                        .setTitle(`Conversão: ${SourceCode} -> ${LocalCode}`)
                         .addFields(
                             {
                                 name: 'Valor atual',
-                                value: cached.ask.toLocaleString('pt-BR', {
+                                value: Cached.ask.toLocaleString('pt-BR', {
                                     minimumFractionDigits: 2,
                                     maximumFractionDigits: 6,
                                 }),
@@ -204,40 +204,40 @@ const command = {
                             },
                             {
                                 name: 'Última atualização',
-                                value: formatDate(cached.updatedAt),
+                                value: FormatDate(Cached.updatedAt),
                                 inline: false,
                             },
                         )
                         .setFooter({ text: 'API em rate limit. Exibindo cotação em cache' });
 
-                    await respond({ embeds: [embed] });
+                    await Respond({ embeds: [Embed] });
                     return;
                 }
 
-                await respond({
+                await Respond({
                     content: 'A API de cotação está em rate limit. Tente novamente em alguns segundos',
                 });
                 return;
             }
 
-            if (!response.ok) {
-                throw new Error(`Erro na API de cotação (${response.status})`);
+            if (!Response.ok) {
+                throw new Error(`Erro na API de cotação (${Response.status})`);
             }
 
-            const data = (await response.json()) as Record<string, any>;
-            const normalizedData = normalizeApiData(data);
-            const pairData = normalizedData[pairKey] ?? Object.values(data).find((entry: any) => entry?.ask);
+            const Data = (await Response.json()) as Record<string, any>;
+            const NormalizedData = NormalizeApiData(Data);
+            const PairData = NormalizedData[PairKey] ?? Object.values(Data).find((Entry: any) => Entry?.ask);
 
-            if (!pairData?.ask) {
-                const cached = getCachedQuote(cacheKey);
-                if (cached) {
-                    const embed = new EmbedBuilder()
+            if (!PairData?.ask) {
+                const Cached = GetCachedQuote(CacheKey);
+                if (Cached) {
+                    const Embed = new EmbedBuilder()
                         .setColor('Yellow' as ColorResolvable)
-                        .setTitle(`Conversão: ${sourceCode} -> ${localCode}`)
+                        .setTitle(`Conversão: ${SourceCode} -> ${LocalCode}`)
                         .addFields(
                             {
                                 name: 'Valor atual',
-                                value: cached.ask.toLocaleString('pt-BR', {
+                                value: Cached.ask.toLocaleString('pt-BR', {
                                     minimumFractionDigits: 2,
                                     maximumFractionDigits: 6,
                                 }),
@@ -245,44 +245,44 @@ const command = {
                             },
                             {
                                 name: 'Última atualização',
-                                value: formatDate(cached.updatedAt),
+                                value: FormatDate(Cached.updatedAt),
                                 inline: false,
                             },
                         )
                         .setFooter({ text: 'Resposta da API inválida. Exibindo cotação em cache' });
 
-                    await respond({ embeds: [embed] });
+                    await Respond({ embeds: [Embed] });
                     return;
                 }
 
-                await respond({
+                await Respond({
                     content: 'Não foi possível obter a cotação desta moeda',
                 });
                 return;
             }
 
-            const ask = Number(pairData.ask);
-            if (!Number.isFinite(ask)) {
-                await respond({
+            const Ask = Number(PairData.ask);
+            if (!Number.isFinite(Ask)) {
+                await Respond({
                     content: 'Não foi possível obter a cotação desta moeda',
                 });
                 return;
             }
 
-            const updatedAtRaw = String(pairData.create_date ?? new Date().toISOString());
-            quoteCache.set(cacheKey, {
-                ask,
-                updatedAt: updatedAtRaw,
+            const UpdatedAtRaw = String(PairData.create_date ?? new Date().toISOString());
+            QuoteCache.set(CacheKey, {
+                ask: Ask,
+                updatedAt: UpdatedAtRaw,
                 timestamp: Date.now(),
             });
 
-            const embed = new EmbedBuilder()
+            const Embed = new EmbedBuilder()
                 .setColor('Green' as ColorResolvable)
-                .setTitle(`Conversão: ${sourceCode} -> ${localCode}`)
+                .setTitle(`Conversão: ${SourceCode} -> ${LocalCode}`)
                 .addFields(
                     {
                         name: 'Valor atual',
-                        value: ask.toLocaleString('pt-BR', {
+                        value: Ask.toLocaleString('pt-BR', {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 6,
                         }),
@@ -290,19 +290,19 @@ const command = {
                     },
                     {
                         name: 'Última atualização',
-                        value: formatDate(updatedAtRaw),
+                        value: FormatDate(UpdatedAtRaw),
                         inline: false,
                     },
                 );
 
-            await respond({ embeds: [embed] });
-        } catch (error) {
-            console.error('[CONVERTER] Erro ao consultar cotação:', error);
-            await respond({
+            await Respond({ embeds: [Embed] });
+        } catch (Error) {
+            console.error('[CONVERTER] Erro ao consultar cotação:', Error);
+            await Respond({
                 content: 'Ocorreu um erro ao consultar a cotação',
             });
         }
     },
 };
 
-export default command;
+export default Command;

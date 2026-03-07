@@ -1,15 +1,14 @@
 import 'dotenv/config';
-import { Client, IntentsBitField, MessageFlags, Partials } from 'discord.js';
-import * as noblox from 'noblox.js';
-import commandsHandler from './Handler/commands';
-import eventsHandler from './Handler/events';
+import { Client, IntentsBitField, MessageFlags, Options } from 'discord.js';
+import CommandsHandler from './Handler/commands';
+import EventsHandler from './Handler/events';
 
 type SlashCommandModule = {
     data?: {
         name?: string;
         toJSON?: () => { name?: string };
     };
-    run: (client: BotClient, interaction: any) => Promise<unknown> | unknown;
+    run: (Client: BotClient, Interaction: any) => Promise<unknown> | unknown;
 };
 
 type BotClient = Client & {
@@ -19,321 +18,450 @@ type BotClient = Client & {
     };
 };
 
-function isInteractionAlreadyAcknowledged(error: any): boolean {
-    return error?.code === 40060 || error?.rawError?.code === 40060;
+const DiscordToken = process.env.DISCORD_BOT_TOKEN;
+const RestartWindowMs = 5 * 60_000;
+const MaxRestartsInWindow = 6;
+const RestartDelayMs = 4_000;
+const ForceExitDelayMs = 25_000;
+const MinRestartIntervalMs = 15_000;
+
+const RestartHistory: number[] = [];
+let IsRestarting = false;
+let LastRestartTimestamp = 0;
+
+function IsInteractionAlreadyAcknowledged(Error: any): boolean {
+    return Error?.code === 40060 || Error?.rawError?.code === 40060;
 }
 
-function isUnknownInteraction(error: any): boolean {
-    return error?.code === 10062 || error?.rawError?.code === 10062;
+function IsUnknownInteraction(Error: any): boolean {
+    return Error?.code === 10062 || Error?.rawError?.code === 10062;
 }
 
-function isInteractionNotReplied(error: any): boolean {
-    return error?.code === 'InteractionNotReplied';
+function IsUnknownWebhook(Error: any): boolean {
+    return Error?.code === 10015 || Error?.rawError?.code === 10015;
 }
 
-function isIgnorableInteractionError(error: any): boolean {
+function IsInteractionNotReplied(Error: any): boolean {
+    return Error?.code === 'InteractionNotReplied';
+}
+
+function IsIgnorableInteractionError(Error: any): boolean {
     return (
-        isInteractionAlreadyAcknowledged(error) ||
-        isUnknownInteraction(error) ||
-        isInteractionNotReplied(error)
+        IsInteractionAlreadyAcknowledged(Error) ||
+        IsUnknownInteraction(Error) ||
+        IsUnknownWebhook(Error) ||
+        IsInteractionNotReplied(Error)
     );
 }
 
-const client = new Client({
+const ClientInstance = new Client({
     intents: [
         IntentsBitField.Flags.DirectMessages,
-        IntentsBitField.Flags.GuildInvites,
-        IntentsBitField.Flags.GuildMembers,
-        IntentsBitField.Flags.GuildPresences,
         IntentsBitField.Flags.Guilds,
-        IntentsBitField.Flags.MessageContent,
-        IntentsBitField.Flags.GuildMessageReactions,
-        IntentsBitField.Flags.GuildEmojisAndStickers,
-        IntentsBitField.Flags.GuildVoiceStates,
-        IntentsBitField.Flags.GuildMessages,
     ],
-    partials: [
-        Partials.User,
-        Partials.Message,
-        Partials.Reaction,
-        Partials.Channel,
-        Partials.GuildMember,
-    ],
+    makeCache: Options.cacheWithLimits({
+        ...Options.DefaultMakeCacheSettings,
+        ApplicationCommandManager: 0,
+        ApplicationEmojiManager: 0,
+        AutoModerationRuleManager: 0,
+        BaseGuildEmojiManager: 0,
+        DMMessageManager: 5,
+        EntitlementManager: 0,
+        GuildBanManager: 0,
+        GuildEmojiManager: 0,
+        GuildForumThreadManager: 0,
+        GuildInviteManager: 0,
+        GuildMemberManager: 0,
+        GuildMessageManager: 10,
+        GuildScheduledEventManager: 0,
+        GuildStickerManager: 0,
+        GuildTextThreadManager: 0,
+        MessageManager: 20,
+        PresenceManager: 0,
+        ReactionManager: 0,
+        ReactionUserManager: 0,
+        StageInstanceManager: 0,
+        ThreadManager: 0,
+        ThreadMemberManager: 0,
+        UserManager: 200,
+        VoiceStateManager: 0,
+    }),
+    sweepers: {
+        messages: {
+            interval: 300,
+            lifetime: 600,
+        },
+        threads: {
+            interval: 3600,
+            lifetime: 1800,
+        },
+    },
 }) as BotClient;
 
-function patchInteractionResponses(interaction: any): void {
-    if (interaction.__lockouPatchedResponses) {
+function Sleep(Ms: number): Promise<void> {
+    return new Promise((Resolve) => setTimeout(Resolve, Ms));
+}
+
+function CanRestartNow(): boolean {
+    const Now = Date.now();
+
+    while (RestartHistory.length > 0 && Now - RestartHistory[0] > RestartWindowMs) {
+        RestartHistory.shift();
+    }
+
+    if (RestartHistory.length >= MaxRestartsInWindow) {
+        return false;
+    }
+
+    RestartHistory.push(Now);
+    return true;
+}
+
+async function RestartClient(Reason: string, Error?: unknown): Promise<void> {
+    if (!DiscordToken) {
+        console.error('[RECOVERY] DISCORD_BOT_TOKEN nao definido. Encerrando processo.');
+        process.exit(1);
+    }
+
+    if (IsRestarting) {
+        console.warn(`[RECOVERY] Reinicio ja em andamento. Motivo ignorado: ${Reason}`);
         return;
     }
-    interaction.__lockouPatchedResponses = true;
 
-    const originalReply = typeof interaction.reply === 'function' ? interaction.reply.bind(interaction) : null;
-    const originalEditReply =
-        typeof interaction.editReply === 'function' ? interaction.editReply.bind(interaction) : null;
-    const originalFollowUp =
-        typeof interaction.followUp === 'function' ? interaction.followUp.bind(interaction) : null;
-    const originalDeferReply =
-        typeof interaction.deferReply === 'function' ? interaction.deferReply.bind(interaction) : null;
-    const originalUpdate = typeof interaction.update === 'function' ? interaction.update.bind(interaction) : null;
-    const originalDeferUpdate =
-        typeof interaction.deferUpdate === 'function' ? interaction.deferUpdate.bind(interaction) : null;
+    const Now = Date.now();
+    if (Now - LastRestartTimestamp < MinRestartIntervalMs) {
+        console.warn(`[RECOVERY] Ignorando reinicio por cooldown. Motivo: ${Reason}`);
+        return;
+    }
 
-    if (originalReply && originalEditReply && originalFollowUp) {
-        interaction.reply = async (payload: any) => {
+    if (!CanRestartNow()) {
+        console.error('[RECOVERY] Limite de reinicios excedido. Encerrando para evitar loop.');
+        process.exit(1);
+    }
+
+    IsRestarting = true;
+    LastRestartTimestamp = Now;
+
+    console.error(`[RECOVERY] Reiniciando sessao do bot. Motivo: ${Reason}`);
+    if (Error) {
+        console.error('[RECOVERY] Erro que disparou o reinicio:', Error);
+    }
+
+    const ForceExitTimer = setTimeout(() => {
+        console.error('[RECOVERY] Reinicio travado. Encerrando processo.');
+        process.exit(1);
+    }, ForceExitDelayMs);
+    ForceExitTimer.unref();
+
+    try {
+        ClientInstance.destroy();
+    } catch (DestroyError) {
+        console.error('[RECOVERY] Falha ao destruir client antes do reinicio:', DestroyError);
+    }
+
+    try {
+        await Sleep(RestartDelayMs);
+        await ClientInstance.login(DiscordToken);
+        console.log('[RECOVERY] Sessao reestabelecida com sucesso.');
+    } catch (RestartError) {
+        console.error('[RECOVERY] Falha ao reiniciar sessao. Encerrando processo:', RestartError);
+        process.exit(1);
+    } finally {
+        clearTimeout(ForceExitTimer);
+        IsRestarting = false;
+    }
+}
+
+function PatchInteractionResponses(Interaction: any): void {
+    if (Interaction.__lockouPatchedResponses) {
+        return;
+    }
+    Interaction.__lockouPatchedResponses = true;
+
+    const OriginalReply = typeof Interaction.reply === 'function' ? Interaction.reply.bind(Interaction) : null;
+    const OriginalEditReply =
+        typeof Interaction.editReply === 'function' ? Interaction.editReply.bind(Interaction) : null;
+    const OriginalFollowUp =
+        typeof Interaction.followUp === 'function' ? Interaction.followUp.bind(Interaction) : null;
+    const OriginalDeferReply =
+        typeof Interaction.deferReply === 'function' ? Interaction.deferReply.bind(Interaction) : null;
+    const OriginalUpdate = typeof Interaction.update === 'function' ? Interaction.update.bind(Interaction) : null;
+    const OriginalDeferUpdate =
+        typeof Interaction.deferUpdate === 'function' ? Interaction.deferUpdate.bind(Interaction) : null;
+
+    if (OriginalReply && OriginalEditReply && OriginalFollowUp) {
+        Interaction.reply = async (Payload: any) => {
             try {
-                return await originalReply(payload);
-            } catch (error) {
-                if (isUnknownInteraction(error) || isInteractionNotReplied(error)) {
+                return await OriginalReply(Payload);
+            } catch (Error) {
+                if (IsUnknownInteraction(Error) || IsInteractionNotReplied(Error)) {
                     return null;
                 }
 
-                if (!isInteractionAlreadyAcknowledged(error)) {
-                    throw error;
+                if (!IsInteractionAlreadyAcknowledged(Error)) {
+                    throw Error;
                 }
 
                 try {
-                    return await originalEditReply(payload);
+                    return await OriginalEditReply(Payload);
                 } catch {
                     // Some payloads (e.g. flags/ephemeral) are invalid for editReply
                 }
 
                 try {
-                    if (!interaction.deferred && !interaction.replied) {
+                    if (!Interaction.deferred && !Interaction.replied) {
                         return null;
                     }
 
-                    return await originalFollowUp(payload);
-                } catch (followUpError) {
-                    if (isIgnorableInteractionError(followUpError)) {
+                    return await OriginalFollowUp(Payload);
+                } catch (FollowUpError) {
+                    if (IsIgnorableInteractionError(FollowUpError)) {
                         return null;
                     }
 
-                    throw followUpError;
+                    throw FollowUpError;
                 }
             }
         };
     }
 
-    if (originalEditReply && originalFollowUp) {
-        interaction.editReply = async (payload: any) => {
+    if (OriginalEditReply && OriginalFollowUp) {
+        Interaction.editReply = async (Payload: any) => {
             try {
-                return await originalEditReply(payload);
-            } catch (error) {
-                if (isUnknownInteraction(error) || isInteractionNotReplied(error)) {
+                return await OriginalEditReply(Payload);
+            } catch (Error) {
+                if (IsUnknownInteraction(Error) || IsInteractionNotReplied(Error)) {
                     return null;
                 }
 
-                if (!isInteractionAlreadyAcknowledged(error)) {
-                    throw error;
+                if (!IsInteractionAlreadyAcknowledged(Error)) {
+                    throw Error;
                 }
 
                 try {
-                    if (!interaction.deferred && !interaction.replied) {
+                    if (!Interaction.deferred && !Interaction.replied) {
                         return null;
                     }
 
-                    return await originalFollowUp(payload);
-                } catch (followUpError) {
-                    if (isIgnorableInteractionError(followUpError)) {
+                    return await OriginalFollowUp(Payload);
+                } catch (FollowUpError) {
+                    if (IsIgnorableInteractionError(FollowUpError)) {
                         return null;
                     }
 
-                    throw followUpError;
+                    throw FollowUpError;
                 }
             }
         };
     }
 
-    if (originalFollowUp) {
-        interaction.followUp = async (payload: any) => {
+    if (OriginalFollowUp) {
+        Interaction.followUp = async (Payload: any) => {
             try {
-                if (!interaction.deferred && !interaction.replied) {
+                if (!Interaction.deferred && !Interaction.replied) {
                     return null;
                 }
 
-                return await originalFollowUp(payload);
-            } catch (error) {
-                if (isIgnorableInteractionError(error)) {
+                return await OriginalFollowUp(Payload);
+            } catch (Error) {
+                if (IsIgnorableInteractionError(Error)) {
                     return null;
                 }
 
-                throw error;
+                throw Error;
             }
         };
     }
 
-    if (originalDeferReply) {
-        interaction.deferReply = async (payload: any) => {
+    if (OriginalDeferReply) {
+        Interaction.deferReply = async (Payload: any) => {
             try {
-                return await originalDeferReply(payload);
-            } catch (error) {
-                if (isIgnorableInteractionError(error)) {
+                return await OriginalDeferReply(Payload);
+            } catch (Error) {
+                if (IsIgnorableInteractionError(Error)) {
                     return null;
                 }
 
-                throw error;
+                throw Error;
             }
         };
     }
 
-    if (originalUpdate && originalEditReply && originalFollowUp) {
-        interaction.update = async (payload: any) => {
+    if (OriginalUpdate && OriginalEditReply && OriginalFollowUp) {
+        Interaction.update = async (Payload: any) => {
             try {
-                return await originalUpdate(payload);
-            } catch (error) {
-                if (isUnknownInteraction(error) || isInteractionNotReplied(error)) {
+                return await OriginalUpdate(Payload);
+            } catch (Error) {
+                if (IsUnknownInteraction(Error) || IsInteractionNotReplied(Error)) {
                     return null;
                 }
 
-                if (!isInteractionAlreadyAcknowledged(error)) {
-                    throw error;
+                if (!IsInteractionAlreadyAcknowledged(Error)) {
+                    throw Error;
                 }
 
                 try {
-                    return await originalEditReply(payload);
+                    return await OriginalEditReply(Payload);
                 } catch {
                     // Some update payload shapes are incompatible with editReply.
                 }
 
                 try {
-                    if (!interaction.deferred && !interaction.replied) {
+                    if (!Interaction.deferred && !Interaction.replied) {
                         return null;
                     }
 
-                    return await originalFollowUp(payload);
-                } catch (followUpError) {
-                    if (isIgnorableInteractionError(followUpError)) {
+                    return await OriginalFollowUp(Payload);
+                } catch (FollowUpError) {
+                    if (IsIgnorableInteractionError(FollowUpError)) {
                         return null;
                     }
 
-                    throw followUpError;
+                    throw FollowUpError;
                 }
             }
         };
     }
 
-    if (originalDeferUpdate) {
-        interaction.deferUpdate = async () => {
+    if (OriginalDeferUpdate) {
+        Interaction.deferUpdate = async () => {
             try {
-                return await originalDeferUpdate();
-            } catch (error) {
-                if (isIgnorableInteractionError(error)) {
+                return await OriginalDeferUpdate();
+            } catch (Error) {
+                if (IsIgnorableInteractionError(Error)) {
                     return null;
                 }
 
-                throw error;
+                throw Error;
             }
         };
     }
 }
 
-client.on('interactionCreate', async (interaction) => {
-    patchInteractionResponses(interaction);
+ClientInstance.on('interactionCreate', async (Interaction) => {
+    PatchInteractionResponses(Interaction);
 
-    if (!interaction.isChatInputCommand()) {
+    if (!Interaction.isChatInputCommand()) {
         return;
     }
 
-    let command =
-        client.slashCommands?.local?.get(interaction.commandName) ||
-        client.slashCommands?.global?.get(interaction.commandName);
+    let Command =
+        ClientInstance.slashCommands?.local?.get(Interaction.commandName) ||
+        ClientInstance.slashCommands?.global?.get(Interaction.commandName);
 
-    if (!command) {
-        console.warn(`[COMMAND] Comando não encontrado no cache: ${interaction.commandName}`);
+    if (!Command) {
+        console.warn(`[COMMAND] Comando nao encontrado no cache: ${Interaction.commandName}`);
         try {
-            await interaction.reply({
+            await Interaction.reply({
                 content: 'Algo deu errado ao executar esse comando',
                 flags: MessageFlags.Ephemeral,
             });
-        } catch (replyError) {
-            console.error('[COMMAND] Falha ao responder comando inexistente:', replyError);
+        } catch (ReplyError) {
+            console.error('[COMMAND] Falha ao responder comando inexistente:', ReplyError);
         }
         return;
     }
 
     try {
-        const autoDeferTimer = setTimeout(async () => {
-            if (interaction.deferred || interaction.replied) {
+        const AutoDeferTimer = setTimeout(async () => {
+            if (Interaction.deferred || Interaction.replied) {
                 return;
             }
 
             try {
-                await interaction.deferReply();
-            } catch (deferError) {
-                if (isIgnorableInteractionError(deferError)) {
+                await Interaction.deferReply();
+            } catch (DeferError) {
+                if (IsIgnorableInteractionError(DeferError)) {
                     return;
                 }
 
-                console.error('[COMMAND] Falha no auto-defer da interação:', deferError);
+                console.error('[COMMAND] Falha no auto-defer da interacao:', DeferError);
             }
         }, 1200);
 
         try {
-            await command.run(client, interaction);
+            await Command.run(ClientInstance, Interaction);
         } finally {
-            clearTimeout(autoDeferTimer);
+            clearTimeout(AutoDeferTimer);
         }
-    } catch (error) {
-        if (isIgnorableInteractionError(error)) {
+    } catch (Error) {
+        if (IsIgnorableInteractionError(Error)) {
             return;
         }
 
-        console.error(`[COMMAND] Erro no comando ${interaction.commandName}:`, error);
+        console.error(`[COMMAND] Erro no comando ${Interaction.commandName}:`, Error);
         try {
-            if (interaction.deferred || interaction.replied) {
-                await interaction.editReply({
+            if (Interaction.deferred || Interaction.replied) {
+                await Interaction.editReply({
                     content: 'Ocorreu um erro ao executar este comando',
                 });
                 return;
             }
 
-            await interaction.reply({
-                content: 'Ocorreu um erro ao executar este comando.',
+            await Interaction.reply({
+                content: 'Ocorreu um erro ao executar este comando',
                 flags: MessageFlags.Ephemeral,
             });
-        } catch (fallbackError) {
-            if (isIgnorableInteractionError(fallbackError)) {
+        } catch (FallbackError) {
+            if (IsIgnorableInteractionError(FallbackError)) {
                 return;
             }
 
-            console.error('[COMMAND] Falha ao enviar fallback de erro:', fallbackError);
+            console.error('[COMMAND] Falha ao enviar fallback de erro:', FallbackError);
         }
     }
 });
 
-async function bootstrap(): Promise<void> {
-    const discordToken = process.env.DISCORD_BOT_TOKEN;
-    if (!discordToken) {
-        throw new Error('A variável DISCORD_BOT_TOKEN nao esta definida');
+ClientInstance.on('shardError', (Error) => {
+    console.error('[GATEWAY] shardError detectado:', Error);
+    void RestartClient('shardError', Error);
+});
+
+ClientInstance.on('invalidated', () => {
+    console.error('[GATEWAY] Sessao invalidada pelo Discord (invalidated)');
+    void RestartClient('invalidated');
+});
+
+async function Bootstrap(): Promise<void> {
+    if (!DiscordToken) {
+        throw new Error('A variavel DISCORD_BOT_TOKEN nao esta definida');
     }
 
-    await commandsHandler(client);
-    await eventsHandler(client);
-    await client.login(discordToken);
-
-    const robloxCookie = process.env.COOKIE;
-    if (robloxCookie) {
-        await noblox.setCookie(robloxCookie);
-    } else {
-        console.warn('[ROBLOX] COOKIE não definida, Recursos Roblox podem falhar');
-    }
+    await CommandsHandler(ClientInstance);
+    await EventsHandler(ClientInstance);
+    await ClientInstance.login(DiscordToken);
 }
 
-bootstrap().catch((error) => {
-    console.error('[BOOT] Falha ao iniciar o bot:', error);
+Bootstrap().catch((Error) => {
+    console.error('[BOOT] Falha ao iniciar o bot:', Error);
     process.exit(1);
 });
 
-process.on('unhandledRejection', (reason, promise) => {
-    console.error('[PROCESS] unhandledRejection', promise, 'reason:', reason);
+process.on('unhandledRejection', (Reason, PromiseRef) => {
+    console.error('[PROCESS] unhandledRejection', PromiseRef, 'reason:', Reason);
+    if (IsIgnorableInteractionError(Reason)) {
+        return;
+    }
+
+    void RestartClient('unhandledRejection', Reason);
 });
 
-process.on('uncaughtException', (err, origin) => {
-    console.error('[PROCESS] uncaughtException', err, origin);
+process.on('uncaughtException', (Err, Origin) => {
+    console.error('[PROCESS] uncaughtException', Err, Origin);
+    void RestartClient(`uncaughtException:${Origin}`, Err);
 });
 
-process.on('uncaughtExceptionMonitor', (err, origin) => {
-    console.error('[PROCESS] uncaughtExceptionMonitor', err, origin);
+process.on('uncaughtExceptionMonitor', (Err, Origin) => {
+    console.error('[PROCESS] uncaughtExceptionMonitor', Err, Origin);
 });
+if (process.env.LOG_MEMORY === '1') {
+    setInterval(() => {
+        const Usage = process.memoryUsage();
+        const RssMb = (Usage.rss / 1024 / 1024).toFixed(1);
+        const HeapUsedMb = (Usage.heapUsed / 1024 / 1024).toFixed(1);
+        const ExternalMb = (Usage.external / 1024 / 1024).toFixed(1);
+        console.log('[MEMORY] rss=' + RssMb + 'MB heap=' + HeapUsedMb + 'MB external=' + ExternalMb + 'MB');
+    }, 60_000).unref();
+}
+export default ClientInstance;
 
-export default client;

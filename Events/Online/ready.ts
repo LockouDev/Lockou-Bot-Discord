@@ -1,10 +1,10 @@
-﻿const event = {
+﻿const Event = {
     name: 'clientReady',
-    execute: (client: any) => {
-        client.once('clientReady', async () => {
-            console.log(`[READY] Bot online: ${client.user?.tag ?? 'desconhecido'}`);
+    execute: (Client: any) => {
+        Client.once('clientReady', async () => {
+            console.log(`[READY] Bot online: ${Client.user?.tag ?? 'desconhecido'}`);
         });
     },
 };
 
-export default event;
+export default Event;

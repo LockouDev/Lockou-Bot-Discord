@@ -1,47 +1,40 @@
 ﻿import { InteractionContextType, EmbedBuilder, SlashCommandBuilder, ApplicationIntegrationType, CommandInteraction, MessageFlags } from 'discord.js';
-import https from 'https';
+import Https from 'https';
 
-const ROBLOX_COOKIE = process.env.COOKIE?.trim();
+const RobloxCookie = process.env.COOKIE?.trim() ?? null;
 
-if (!ROBLOX_COOKIE) {
+function Delay(Ms: number) {
 
-  console.error('ERRO: Variável COOKIE não encontrada no .env');
-  process.exit(1);
-
-}
-
-function delay(ms: number) {
-
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise(Resolve => setTimeout(Resolve, Ms));
 
 }
 
-// Função para realizar requisição POST
-function postRequest(url: string, data: any): Promise<any> {
+// FunÃ§Ã£o para realizar requisiÃ§Ã£o POST
+function PostRequest(Url: string, Data: any): Promise<any> {
 
-  return new Promise((resolve, reject) => {
+  return new Promise((Resolve, Reject) => {
 
-    const jsonData = JSON.stringify(data);
-    const req = https.request(url, {
+    const JsonData = JSON.stringify(Data);
+    const Req = Https.request(Url, {
 
       method: 'POST',
       headers: {
 
         'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(jsonData),
+        'Content-Length': Buffer.byteLength(JsonData),
 
       },
 
       timeout: 10000,
 
-    }, (res) => {
+    }, (Res) => {
 
-      let body = '';
+      let Body = '';
 
-      res.on('data', (chunk) => (body += chunk));
-      res.on('end', () => {
+      Res.on('data', (Chunk) => (Body += Chunk));
+      Res.on('end', () => {
 
-        try { resolve(JSON.parse(body)); } catch { resolve(body); }
+        try { Resolve(JSON.parse(Body)); } catch { Resolve(Body); }
 
       });
 
@@ -49,20 +42,20 @@ function postRequest(url: string, data: any): Promise<any> {
 
     );
 
-    req.on('error', reject);
-    req.write(jsonData);
-    req.end();
+    Req.on('error', Reject);
+    Req.write(JsonData);
+    Req.end();
 
   });
 
 }
 
-// Função para realizar requisição GET
-function getRequest(url: string, useCookie: boolean = false): Promise<any> {
+// FunÃ§Ã£o para realizar requisiÃ§Ã£o GET
+function GetRequest(Url: string, UseCookie: boolean = false): Promise<any> {
 
-  return new Promise((resolve, reject) => {
+  return new Promise((Resolve, Reject) => {
 
-    const headers: any = {
+    const Headers: any = {
 
       'Accept': 'application/json',
       'Referer': 'https://www.roblox.com/',
@@ -70,32 +63,32 @@ function getRequest(url: string, useCookie: boolean = false): Promise<any> {
 
     };
 
-    if (useCookie && ROBLOX_COOKIE) {
+    if (UseCookie && RobloxCookie) {
 
-      headers['Cookie'] = `.ROBLOSECURITY=${ROBLOX_COOKIE}`;
+      Headers['Cookie'] = `.ROBLOSECURITY=${RobloxCookie}`;
 
     }
 
-    const req = https.request(url, { method: 'GET', headers, timeout: 10000 }, (res) => {
+    const Req = Https.request(Url, { method: 'GET', headers: Headers, timeout: 10000 }, (Res) => {
 
-      let body = '';
+      let Body = '';
 
-      res.on('data', (chunk) => (body += chunk));
-      res.on('end', () => {
+      Res.on('data', (Chunk) => (Body += Chunk));
+      Res.on('end', () => {
 
         try {
 
-          resolve(JSON.parse(body));
+          Resolve(JSON.parse(Body));
 
         } catch {
 
-          const trimmed = body.trim();
+          const Trimmed = Body.trim();
 
-          if (trimmed === 'true') resolve(true);
+          if (Trimmed === 'true') Resolve(true);
 
-          else if (trimmed === 'false') resolve(false);
+          else if (Trimmed === 'false') Resolve(false);
 
-          else resolve(body);
+          else Resolve(Body);
 
         }
 
@@ -103,320 +96,257 @@ function getRequest(url: string, useCookie: boolean = false): Promise<any> {
 
     });
 
-    req.on('error', reject);
-    req.end();
+    Req.on('error', Reject);
+    Req.end();
 
   });
 
 }
 
-// Função para tentar buscar os dados com múltiplas tentativas
-async function fetchWithRetry<T>(fn: () => Promise<T>, retries = 3, delayTime = 1000): Promise<T> {
+// FunÃ§Ã£o para tentar buscar os dados com mÃºltiplas tentativas
+async function FetchWithRetry<T>(Fn: () => Promise<T>, Retries = 3, DelayTime = 1000): Promise<T> {
 
-  for (let i = 1; i <= retries; i++) {
+  for (let I = 1; I <= Retries; I++) {
 
     try {
 
-      return await fn();
+      return await Fn();
 
     } catch {
 
-      if (i < retries) await delay(delayTime);
+      if (I < Retries) await Delay(DelayTime);
 
     }
 
   }
 
-  throw new Error('Falha após várias tentativas');
+  throw new Error('Falha apÃ³s vÃ¡rias tentativas');
 
 }
 
-async function hasPremium(userId: number): Promise<boolean> {
+async function HasPremium(UserId: number): Promise<boolean> {
+
+  if (!RobloxCookie) {
+    return false;
+  }
 
   try {
-    const result = await getRequest(`https://premiumfeatures.roblox.com/v1/users/${userId}/validate-membership`, true);
+    const Result = await GetRequest(`https://premiumfeatures.roblox.com/v1/users/${UserId}/validate-membership`, true);
 
-    return result === true;
+    return Result === true;
 
-  } catch (error: any) {
+  } catch (Error: any) {
 
-    console.log(`[DEBUG] Erro no Premium check para ${userId}:`, error.message || error);
+    console.log(`[DEBUG] Erro no Premium check para ${UserId}:`, Error.message || Error);
     return false;
 
   }
 
 }
-/**
-async function fetchAllDataUntilComplete(userId: number) {
 
-  const [
+async function FetchCounter(Url: string, Retries = 8, DelayMs = 900): Promise<string> {
+  for (let Attempt = 1; Attempt <= Retries; Attempt++) {
+    try {
+      const Data = await GetRequest(Url);
+      if (Data?.count != null) {
+        return String(Data.count);
+      }
+    } catch {
+      // ignora erro e tenta novamente
+    }
 
-    info,
-    thumb,
-    headshot,
-    presenceRaw,
-    premium,
-    friends,
-    followers,
-    followings
-
-  ] = await Promise.allSettled([
-
-    getRequest(`https://users.roblox.com/v1/users/${userId}`),
-    getRequest(`https://thumbnails.roblox.com/v1/users/avatar?userIds=${userId}&size=420x420&format=Png&isCircular=false`),
-    getRequest(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${userId}&size=150x150&format=Png&isCircular=true`),
-    postRequest('https://presence.roblox.com/v1/presence/users', { userIds: [userId] }),
-    hasPremium(userId),
-    getRequest(`https://friends.roblox.com/v1/users/${userId}/friends/count`),
-    getRequest(`https://friends.roblox.com/v1/users/${userId}/followers/count`),
-    getRequest(`https://friends.roblox.com/v1/users/${userId}/followings/count`)
-
-  ]);
-
-  // Extrai sÃ³ o que deu certo
-  const playerInfo = info.status === 'fulfilled' ? info.value : null;
-  const playerThumbnail = thumb.status === 'fulfilled' && thumb.value?.data?.[0]?.state === 'Completed' ? thumb.value : null;
-  const playerHSThumbnail = headshot.status === 'fulfilled' && headshot.value?.data?.[0]?.state === 'Completed' ? headshot.value : null;
-  const presenceInfo = presenceRaw.status === 'fulfilled' && presenceRaw.value?.userPresences?.[0] ? presenceRaw.value.userPresences[0] : { userPresenceType: 0 };
-  const friendCount = friends.status === 'fulfilled' && friends.value?.count != null ? friends.value.count : '???';
-  const followerCount = followers.status === 'fulfilled' && followers.value?.count != null ? followers.value.count : '???';
-  const followingCount = followings.status === 'fulfilled' && followings.value?.count != null ? followings.value.count : '???';
-
-  // Se nÃ£o tiver info bÃ¡sica, falha total
-  if (!playerInfo || !playerThumbnail || !playerHSThumbnail) {
-
-    throw new Error('Falha crÃ­tica ao carregar avatar ou informaÃ§Ãµes do usuÃ¡rio');
-
+    if (Attempt < Retries) {
+      await Delay(DelayMs);
+    }
   }
 
-  return {
-
-    playerInfo,
-    playerThumbnail,
-    playerHSThumbnail,
-    presenceInfo,
-    premium: premium as unknown as boolean,
-    friendCount,
-    followerCount,
-    followingCount
-
-  };
-
+  return 'N/A';
 }
-*/
 
-async function fetchAllDataUntilComplete(userId: number): Promise<any> {
-  // 1. Dados críticos — sempre carregam rápido
-  const [info, thumb, headshot, presenceRaw, premium] = await Promise.all([
-    getRequest(`https://users.roblox.com/v1/users/${userId}`),
-    getRequest(`https://thumbnails.roblox.com/v1/users/avatar?userIds=${userId}&size=420x420&format=Png&isCircular=false`),
-    getRequest(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${userId}&size=150x150&format=Png&isCircular=true`),
-    postRequest('https://presence.roblox.com/v1/presence/users', { userIds: [userId] }).catch(() => ({ userPresences: [] })),
-    hasPremium(userId)
+async function FetchAllDataUntilComplete(UserId: number): Promise<any> {
+  // 1. Dados crÃ­ticos â€” sempre carregam rÃ¡pido
+  const [Info, Thumb, Headshot, PresenceRaw, Premium] = await Promise.all([
+    GetRequest(`https://users.roblox.com/v1/users/${UserId}`),
+    GetRequest(`https://thumbnails.roblox.com/v1/users/avatar?userIds=${UserId}&size=420x420&format=Png&isCircular=false`),
+    GetRequest(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${UserId}&size=150x150&format=Png&isCircular=true`),
+    PostRequest('https://presence.roblox.com/v1/presence/users', { userIds: [UserId] }).catch(() => ({ userPresences: [] })),
+    HasPremium(UserId)
   ]);
 
-  // Validação dos dados essenciais
-  if (!info || !thumb?.data?.[0]?.imageUrl || !headshot?.data?.[0]?.imageUrl) {
+  // ValidaÃ§Ã£o dos dados essenciais
+  if (!Info || !Thumb?.data?.[0]?.imageUrl || !Headshot?.data?.[0]?.imageUrl) {
     throw new Error('Erro ao carregar perfil ou avatar');
   }
 
-  const presenceInfo = presenceRaw?.userPresences?.[0] || { userPresenceType: 0 };
+  const PresenceInfo = PresenceRaw?.userPresences?.[0] || { userPresenceType: 0 };
 
-  // 2. Contadores de amigos/seguidores/seguindo com retry (máximo 10 segundos)
-  let friendCount = 0;
-  let followerCount = 0;
-  let followingCount = 0;
+  // 2. Contadores de amigos/seguidores/seguindo com retry (mÃ¡ximo 10 segundos)
+  let FriendCount = 0;
+  let FollowerCount = 0;
+  let FollowingCount = 0;
 
-  for (let i = 0; i < 15; i++) {
+  for (let I = 0; I < 15; I++) {
     try {
-      const [f, fo, fi] = await Promise.all([
-        getRequest(`https://friends.roblox.com/v1/users/${userId}/friends/count`),
-        getRequest(`https://friends.roblox.com/v1/users/${userId}/followers/count`),
-        getRequest(`https://friends.roblox.com/v1/users/${userId}/followings/count`)
+      const [F, Fo, Fi] = await Promise.all([
+        GetRequest(`https://friends.roblox.com/v1/users/${UserId}/friends/count`),
+        GetRequest(`https://friends.roblox.com/v1/users/${UserId}/followers/count`),
+        GetRequest(`https://friends.roblox.com/v1/users/${UserId}/followings/count`)
       ]);
 
-      if (f?.count != null) friendCount = Number(f.count);
-      if (fo?.count != null) followerCount = Number(fo.count);
-      if (fi?.count != null) followingCount = Number(fi.count);
+      if (F?.count != null) FriendCount = Number(F.count);
+      if (Fo?.count != null) FollowerCount = Number(Fo.count);
+      if (Fi?.count != null) FollowingCount = Number(Fi.count);
 
-      // Se pegou pelo menos um valor diferente de zero, jÃ¡ tÃ¡ bom (conta nova pode ser tudo 0)
-      if (friendCount > 0 || followerCount > 0 || followingCount > 0 || i >= 10) {
+      // Se pegou pelo menos um valor diferente de zero, jÃƒÂ¡ tÃƒÂ¡ bom (conta nova pode ser tudo 0)
+      if (FriendCount > 0 || FollowerCount > 0 || FollowingCount > 0 || I >= 10) {
         break;
       }
     } catch {
       // ignora erro e tenta de novo
     }
 
-    await delay(700);
+    await Delay(700);
   }
 
   return {
-    playerInfo: info,
-    playerThumbnail: thumb,
-    playerHSThumbnail: headshot,
-    presenceInfo,
-    premium,
-    friendCount,
-    followerCount,
-    followingCount
+    playerInfo: Info,
+    playerThumbnail: Thumb,
+    playerHSThumbnail: Headshot,
+    presenceInfo: PresenceInfo,
+    premium: Premium,
+    friendCount: FriendCount,
+    followerCount: FollowerCount,
+    followingCount: FollowingCount
   };
 }
 
-const command = {
+const Command = {
 
   data: new SlashCommandBuilder()
     .setName('procurar')
     .setDescription('Procurar um jogador no Roblox!')
     .setIntegrationTypes(ApplicationIntegrationType.GuildInstall, ApplicationIntegrationType.UserInstall)
     .setContexts(InteractionContextType.Guild, InteractionContextType.BotDM, InteractionContextType.PrivateChannel)
-    .addStringOption(option =>
-      option.setName('player')
+    .addStringOption(Option =>
+      Option.setName('player')
         .setDescription('Nickname do player')
         .setRequired(true)
     ),
 
-  async run(client: any, interaction: any): Promise<void> {
-    const player = interaction.options.getString('player');
-    if (!player?.trim()) return interaction.reply({ content: 'Nome de jogador inválido', ephemeral: true });
+  async run(Client: any, Interaction: any): Promise<void> {
+    const Player = Interaction.options.getString('player');
+    if (!Player?.trim()) return Interaction.reply({ content: 'Nome de jogador invÃ¡lido', ephemeral: true });
 
-    await interaction.deferReply();
+    await Interaction.deferReply();
 
     try {
-      const userResponse = await postRequest('https://users.roblox.com/v1/usernames/users', {
-        usernames: [player],
+      const UserResponse = await PostRequest('https://users.roblox.com/v1/usernames/users', {
+        usernames: [Player],
         excludeBannedUsers: false,
       });
 
-      const playerData = userResponse?.data?.[0];
-      if (!playerData) {
-        return interaction.editReply({
+      const PlayerData = UserResponse?.data?.[0];
+      if (!PlayerData) {
+        return Interaction.editReply({
           embeds: [new EmbedBuilder()
             .setColor('#FB5151')
-            .setTitle('<:ContentDeleted:1315331180521979904> Usuário não encontrado')
-            .setDescription(`Parece que o jogador **${player}** não existe no Roblox`)
+            .setTitle('<:ContentDeleted:1315331180521979904> UsuÃ¡rio nÃ£o encontrado')
+            .setDescription(`Parece que o jogador **${Player}** nÃ£o existe no Roblox`)
           ]
         });
       }
 
-      const userId = playerData.id;
+      const UserId = PlayerData.id;
 
-      // 1. Pega os dados críticos primeiro (rápido)
-      const [info, thumb, headshot, presenceRaw, premium] = await Promise.all([
-        getRequest(`https://users.roblox.com/v1/users/${userId}`),
-        getRequest(`https://thumbnails.roblox.com/v1/users/avatar?userIds=${userId}&size=420x420&format=Png&isCircular=false`),
-        getRequest(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${userId}&size=150x150&format=Png&isCircular=true`),
-        postRequest('https://presence.roblox.com/v1/presence/users', { userIds: [userId] }).catch(() => ({ userPresences: [] })),
-        hasPremium(userId)
+      // 1. Pega os dados crÃ­ticos primeiro (rÃ¡pido)
+      const [Info, Thumb, Headshot, PresenceRaw, Premium] = await Promise.all([
+        GetRequest(`https://users.roblox.com/v1/users/${UserId}`),
+        GetRequest(`https://thumbnails.roblox.com/v1/users/avatar?userIds=${UserId}&size=420x420&format=Png&isCircular=false`),
+        GetRequest(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${UserId}&size=150x150&format=Png&isCircular=true`),
+        PostRequest('https://presence.roblox.com/v1/presence/users', { userIds: [UserId] }).catch(() => ({ userPresences: [] })),
+        HasPremium(UserId)
       ]);
 
-      if (!info || !thumb?.data?.[0]?.imageUrl || !headshot?.data?.[0]?.imageUrl) {
-        return interaction.editReply({ content: 'Erro ao carregar avatar', ephemeral: true });
+      if (!Info || !Thumb?.data?.[0]?.imageUrl || !Headshot?.data?.[0]?.imageUrl) {
+        return Interaction.editReply({ content: 'Erro ao carregar avatar' });
       }
 
-      const presenceInfo = presenceRaw?.userPresences?.[0] || { userPresenceType: 0 };
-      const joinDateUnix = Math.floor(new Date(info.created).getTime() / 1000);
+      const PresenceInfo = PresenceRaw?.userPresences?.[0] || { userPresenceType: 0 };
+      const JoinDateUnix = Math.floor(new Date(Info.created).getTime() / 1000);
 
-      const presenceIcons: Record<number, string> = {
+      const PresenceIcons: Record<number, string> = {
         0: '<:Offline:1315623606176190505>',
         1: '<:Online:1315623596730880001>',
         2: '<:Playing:1315623571619446784>',
         3: '<:Studio:1315623586903621632>'
       };
 
-      const presenceTexts: Record<number, string> = {
+      const PresenceTexts: Record<number, string> = {
         0: 'Offline', 1: 'Online', 2: 'Jogando', 3: 'No Studio'
       };
 
-      const presenceIcon = presenceIcons[presenceInfo.userPresenceType] || '<:Offline:1315623606176190505>';
-      const presenceText = presenceTexts[presenceInfo.userPresenceType] || 'Desconhecido';
+      const PresenceIcon = PresenceIcons[PresenceInfo.userPresenceType] || '<:Offline:1315623606176190505>';
+      const PresenceText = PresenceTexts[PresenceInfo.userPresenceType] || 'Desconhecido';
 
-      const displayNameFormatted = info.name === info.displayName ? info.name : `${info.name} (${info.displayName})`;
-      const banStatus = info.isBanned ? '<:Confirm:1315286412664508426> Sim' : '<:Decline:1315286423170977803> Não';
-      const premiumStatus = premium ? '<:Confirm:1315286412664508426> Sim' : '<:Decline:1315286423170977803> Não';
-      const description = info.description?.trim() || null;
+      const DisplayNameFormatted = Info.name === Info.displayName ? Info.name : `${Info.name} (${Info.displayName})`;
+      const BanStatus = Info.isBanned ? '<:Confirm:1315286412664508426> Sim' : '<:Decline:1315286423170977803> NÃ£o';
+      const PremiumStatus = Premium ? '<:Confirm:1315286412664508426> Sim' : '<:Decline:1315286423170977803> NÃ£o';
+      const Description = Info.description?.trim() || null;
 
       // 2. EMBED INICIAL COM "CARREGANDO..."
-      const embed = new EmbedBuilder()
-        .setColor(info.isBanned ? '#FB5151' : '#50FB5B')
-        .setAuthor({ name: `Perfil de ${info.name}`, iconURL: 'https://img.icons8.com/ios11/200/FFFFFF/roblox.png' })
-        .setTitle(`${presenceIcon} ${displayNameFormatted}`)
-        .setURL(`https://www.roblox.com/users/${userId}/profile`)
-        .setThumbnail(thumb.data[0].imageUrl)
-        .setDescription(description)
+      const Embed = new EmbedBuilder()
+        .setColor(Info.isBanned ? '#FB5151' : '#50FB5B')
+        .setAuthor({ name: `Perfil de ${Info.name}`, iconURL: 'https://img.icons8.com/ios11/200/FFFFFF/roblox.png' })
+        .setTitle(`${PresenceIcon} ${DisplayNameFormatted}`)
+        .setURL(`https://www.roblox.com/users/${UserId}/profile`)
+        .setThumbnail(Thumb.data[0].imageUrl)
+        .setDescription(Description)
         .addFields(
-          { name: '<:PlayerIcon:1315270644107182140> ID do Jogador', value: `\`${userId}\``, inline: true },
-          { name: '<:ContentDeleted:1315331180521979904> Conta Banida', value: banStatus, inline: true },
-          { name: '<:Premium:1315261369955913728> Premium', value: premiumStatus, inline: true },
-          { name: '<:DateAccount:1315278306425438248> Data de Criação', value: `<t:${joinDateUnix}:d>`, inline: true },
-          { name: '<:CreatedAccount:1315277832871739413> Idade da Conta', value: `${Math.floor((Date.now() - new Date(info.created).getTime()) / 86400000)} dias`, inline: true },
-          { name: `${presenceIcon} Status`, value: presenceText, inline: true },
+          { name: '<:PlayerIcon:1315270644107182140> ID do Jogador', value: `\`${UserId}\``, inline: true },
+          { name: '<:ContentDeleted:1315331180521979904> Conta Banida', value: BanStatus, inline: true },
+          { name: '<:Premium:1315261369955913728> Premium', value: PremiumStatus, inline: true },
+          { name: '<:DateAccount:1315278306425438248> Data de CriaÃ§Ã£o', value: `<t:${JoinDateUnix}:d>`, inline: true },
+          { name: '<:CreatedAccount:1315277832871739413> Idade da Conta', value: `${Math.floor((Date.now() - new Date(Info.created).getTime()) / 86400000)} dias`, inline: true },
+          { name: `${PresenceIcon} Status`, value: PresenceText, inline: true },
           { name: '<:Friends:1315278590685745205> Total de Amigos', value: 'Carregando...', inline: true },
           { name: '<:Followers:1315279069029601371> Seguidores', value: 'Carregando...', inline: true },
           { name: '<:Following:1315280134244401204> Seguindo', value: 'Carregando...', inline: true }
         )
-        .setFooter({ text: displayNameFormatted, iconURL: headshot.data[0].imageUrl })
+        .setFooter({ text: DisplayNameFormatted, iconURL: Headshot.data[0].imageUrl })
         .setTimestamp();
 
-      if (info.isBanned) {
-        embed.spliceFields(6, 3); // remove os 3 contadores se for banido
+      if (Info.isBanned) {
+        Embed.spliceFields(6, 3); // remove os 3 contadores se for banido
       }
 
-      await interaction.editReply({ embeds: [embed] });
+      await Interaction.editReply({ embeds: [Embed] });
 
-      // 3. TENTA ATÃ‰ CONSEGUIR OS 3 VALORES (NUNCA DESISTE)
-      let friendCount = null;
-      let followerCount = null;
-      let followingCount = null;
+      if (!Info.isBanned) {
+        const [FriendCount, FollowerCount, FollowingCount] = await Promise.all([
+          FetchCounter(`https://friends.roblox.com/v1/users/${UserId}/friends/count`),
+          FetchCounter(`https://friends.roblox.com/v1/users/${UserId}/followers/count`),
+          FetchCounter(`https://friends.roblox.com/v1/users/${UserId}/followings/count`),
+        ]);
 
-      while (friendCount === null || followerCount === null || followingCount === null) {
-        try {
-          const [f, fo, fi] = await Promise.all([
-            getRequest(`https://friends.roblox.com/v1/users/${userId}/friends/count`),
-            getRequest(`https://friends.roblox.com/v1/users/${userId}/followers/count`),
-            getRequest(`https://friends.roblox.com/v1/users/${userId}/followings/count`)
-          ]);
+        Embed.spliceFields(
+          6,
+          3,
+          { name: '<:Friends:1315278590685745205> Total de Amigos', value: FriendCount, inline: true },
+          { name: '<:Followers:1315279069029601371> Seguidores', value: FollowerCount, inline: true },
+          { name: '<:Following:1315280134244401204> Seguindo', value: FollowingCount, inline: true },
+        );
 
-          if (f?.count != null && friendCount === null) {
-            friendCount = String(f.count);
-            embed.spliceFields(6, 1, { name: '<:Friends:1315278590685745205> Total de Amigos', value: friendCount, inline: true });
-            await interaction.editReply({ embeds: [embed] });
-          }
-          if (fo?.count != null && followerCount === null) {
-            followerCount = String(fo.count);
-            embed.spliceFields(7, 1, { name: '<:Followers:1315279069029601371> Seguidores', value: followerCount, inline: true });
-            await interaction.editReply({ embeds: [embed] });
-          }
-          if (fi?.count != null && followingCount === null) {
-            followingCount = String(fi.count);
-            embed.spliceFields(8, 1, { name: '<:Following:1315280134244401204> Seguindo', value: followingCount, inline: true });
-            await interaction.editReply({ embeds: [embed] });
-          }
-
-          if (friendCount && followerCount && followingCount) break;
-        } catch (e) {
-          // ignora erro e tenta de novo
-        }
-
-        await delay(1000);
+        await Interaction.editReply({ embeds: [Embed] });
       }
-
-      // AtualizaÃ§Ã£o final garantida
-      embed.spliceFields(6, 3, { name: '<:Friends:1315278590685745205> Total de Amigos', value: friendCount!, inline: true });
-      embed.spliceFields(7, 1, { name: '<:Followers:1315279069029601371> Seguidores', value: followerCount!, inline: true });
-      embed.spliceFields(8, 1, { name: '<:Following:1315280134244401204> Seguindo', value: followingCount!, inline: true });
-
-      await interaction.editReply({ embeds: [embed] });
-
-    } catch (error) {
-      console.error('Erro ao buscar informações do jogador:', error);
-      await interaction.editReply({
-        content: '<:Roblox:1314141291621126165> Ocorreu um erro ao buscar as informações, Tente novamente mais tarde',
-        ephemeral: true,
+    } catch (Error) {
+      console.error('Erro ao buscar informaÃ§Ãµes do jogador:', Error);
+      await Interaction.editReply({
+        content: '<:Roblox:1314141291621126165> Ocorreu um erro ao buscar as informaÃ§Ãµes, Tente novamente mais tarde',
       });
     }
   }
 
 }
 
-export default command;
+export default Command;
 

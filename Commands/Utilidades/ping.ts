@@ -5,9 +5,9 @@
     InteractionContextType,
     SlashCommandBuilder,
 } from 'discord.js';
-import config from '../../config';
+import Config from '../../config';
 
-const command = {
+const Command = {
     data: new SlashCommandBuilder()
         .setName('ping')
         .setDescription('Veja o meu ping!')
@@ -18,17 +18,17 @@ const command = {
             InteractionContextType.PrivateChannel,
         ),
 
-    async run(client: any, interaction: any) {
-        const embed = new EmbedBuilder()
-            .setColor(config.discord.color as ColorResolvable)
+    async run(Client: any, Interaction: any) {
+        const Embed = new EmbedBuilder()
+            .setColor(Config.discord.color as ColorResolvable)
             .setAuthor({
-                name: client.user.username,
-                iconURL: client.user.displayAvatarURL(),
+                name: Client.user.username,
+                iconURL: Client.user.displayAvatarURL(),
             })
-            .setDescription(`Olá **${interaction.user.username}**, meu ping está em \`${client.ws.ping}ms\``);
+            .setDescription(`Olá **${Interaction.user.username}**, meu ping está em \`${Client.ws.ping}ms\``);
 
-        await interaction.reply({ embeds: [embed] });
+        await Interaction.reply({ embeds: [Embed] });
     },
 };
 
-export default command;
+export default Command;

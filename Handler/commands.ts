@@ -1,7 +1,7 @@
 ﻿import 'dotenv/config';
 import { REST, Routes, Collection } from 'discord.js';
-import { promises as fs } from 'node:fs';
-import path from 'node:path';
+import { promises as Fs } from 'node:fs';
+import Path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 type CommandModule = {
@@ -10,80 +10,80 @@ type CommandModule = {
         guildOnly?: boolean;
         toJSON: () => Record<string, any>;
     };
-    run?: (client: any, interaction: any) => Promise<unknown> | unknown;
+    run?: (Client: any, Interaction: any) => Promise<unknown> | unknown;
 };
 
 type CommandData = Record<string, any>;
 
-export default async function commandsHandler(client: any): Promise<void> {
-    const token = process.env.DISCORD_BOT_TOKEN;
-    const clientId = process.env.DISCORD_CLIENT_ID;
+export default async function CommandsHandler(Client: any): Promise<void> {
+    const Token = process.env.DISCORD_BOT_TOKEN;
+    const ClientId = process.env.DISCORD_CLIENT_ID;
 
-    if (!token || !clientId) {
+    if (!Token || !ClientId) {
         console.error('[COMMANDS] DISCORD_BOT_TOKEN e DISCORD_CLIENT_ID sao obrigatorios.');
         return;
     }
 
-    const rest = new REST({ version: '10' }).setToken(token);
-    const localSlashCommands = new Collection<string, CommandModule>();
-    const globalSlashCommands = new Collection<string, CommandModule>();
-    const loadedLocalCommands: CommandData[] = [];
-    const loadedGlobalCommands: CommandData[] = [];
+    const Rest = new REST({ version: '10' }).setToken(Token);
+    const LocalSlashCommands = new Collection<string, CommandModule>();
+    const GlobalSlashCommands = new Collection<string, CommandModule>();
+    const LoadedLocalCommands: CommandData[] = [];
+    const LoadedGlobalCommands: CommandData[] = [];
 
     try {
-        const commandsRoot = path.resolve(process.cwd(), 'Commands');
-        const folders = await fs.readdir(commandsRoot, { withFileTypes: true });
+        const CommandsRoot = Path.resolve(process.cwd(), 'Commands');
+        const Folders = await Fs.readdir(CommandsRoot, { withFileTypes: true });
 
-        for (const folder of folders) {
-            if (!folder.isDirectory()) {
+        for (const Folder of Folders) {
+            if (!Folder.isDirectory()) {
                 continue;
             }
 
-            const folderPath = path.join(commandsRoot, folder.name);
-            const files = await fs.readdir(folderPath, { withFileTypes: true });
+            const FolderPath = Path.join(CommandsRoot, Folder.name);
+            const Files = await Fs.readdir(FolderPath, { withFileTypes: true });
 
-            for (const file of files) {
-                if (!file.isFile() || !file.name.endsWith('.ts')) {
+            for (const File of Files) {
+                if (!File.isFile() || !File.name.endsWith('.ts')) {
                     continue;
                 }
 
                 try {
-                    const modulePath = path.join(folderPath, file.name);
-                    const imported = await import(pathToFileURL(modulePath).href);
-                    const command: CommandModule = (imported.default ?? imported) as CommandModule;
+                    const ModulePath = Path.join(FolderPath, File.name);
+                    const Imported = await import(pathToFileURL(ModulePath).href);
+                    const Command: CommandModule = (Imported.default ?? Imported) as CommandModule;
 
-                    if (!command?.data || typeof command.run !== 'function') {
-                        console.warn(`[COMMANDS] Comando "${file.name}" esta incompleto.`);
+                    if (!Command?.data || typeof Command.run !== 'function') {
+                        console.warn(`[COMMANDS] Comando "${File.name}" esta incompleto.`);
                         continue;
                     }
 
-                    const jsonCommand = command.data.toJSON();
-                    if (command.data.guildOnly) {
-                        localSlashCommands.set(command.data.name, command);
-                        loadedLocalCommands.push(jsonCommand);
+                    const JsonCommand = Command.data.toJSON();
+                    if (Command.data.guildOnly) {
+                        LocalSlashCommands.set(Command.data.name, Command);
+                        LoadedLocalCommands.push(JsonCommand);
                         continue;
                     }
 
-                    globalSlashCommands.set(command.data.name, command);
-                    loadedGlobalCommands.push(jsonCommand);
-                } catch (error) {
-                    console.error(`[COMMANDS] Falha ao carregar "${folder.name}/${file.name}":`, error);
+                    GlobalSlashCommands.set(Command.data.name, Command);
+                    LoadedGlobalCommands.push(JsonCommand);
+                } catch (Error) {
+                    console.error(`[COMMANDS] Falha ao carregar "${Folder.name}/${File.name}":`, Error);
                 }
             }
         }
 
-        client.slashCommands = { local: localSlashCommands, global: globalSlashCommands };
+        Client.slashCommands = { local: LocalSlashCommands, global: GlobalSlashCommands };
 
-        client.once('clientReady', async () => {
-            const guildId = process.env.DISCORD_GUILD_ID;
+        Client.once('clientReady', async () => {
+            const GuildId = process.env.DISCORD_GUILD_ID;
 
-            if (guildId) {
-                const guild = client.guilds.cache.get(guildId);
-                if (guild) {
-                    await syncCommands(
-                        rest,
-                        Routes.applicationGuildCommands(clientId, guildId),
-                        loadedLocalCommands,
+            if (GuildId) {
+                const Guild = Client.guilds.cache.get(GuildId);
+                if (Guild) {
+                    await SyncCommands(
+                        Rest,
+                        Routes.applicationGuildCommands(ClientId, GuildId),
+                        LoadedLocalCommands,
                         'guild',
                     );
                 } else {
@@ -93,108 +93,108 @@ export default async function commandsHandler(client: any): Promise<void> {
                 console.warn('[COMMANDS] DISCORD_GUILD_ID nao definido. Ignorando comandos locais.');
             }
 
-            const uniqueGlobalCommands = Array.from(
-                new Map(loadedGlobalCommands.map((command) => [command.name, command])).values(),
+            const UniqueGlobalCommands = Array.from(
+                new Map(LoadedGlobalCommands.map((Command) => [Command.name, Command])).values(),
             );
 
-            await syncCommands(
-                rest,
-                Routes.applicationCommands(clientId),
-                uniqueGlobalCommands,
+            await SyncCommands(
+                Rest,
+                Routes.applicationCommands(ClientId),
+                UniqueGlobalCommands,
                 'global',
             );
         });
-    } catch (error) {
-        console.error('[COMMANDS] Erro ao carregar comandos:', error);
+    } catch (Error) {
+        console.error('[COMMANDS] Erro ao carregar comandos:', Error);
     }
 }
 
-async function syncCommands(
-    rest: REST,
-    route: `/${string}`,
-    commands: CommandData[],
-    scope: 'guild' | 'global',
+async function SyncCommands(
+    Rest: REST,
+    Route: `/${string}`,
+    Commands: CommandData[],
+    Scope: 'guild' | 'global',
 ): Promise<void> {
     try {
-        console.log(`[COMMANDS] Sincronizando comandos ${scope}...`);
+        console.log(`[COMMANDS] Sincronizando comandos ${Scope}...`);
 
-        const existingCommands = (await rest.get(route)) as Array<Record<string, any>>;
-        const toRegister: CommandData[] = [];
-        const toUpdate: CommandData[] = [];
-        const toDelete = [...existingCommands];
+        const ExistingCommands = (await Rest.get(Route)) as Array<Record<string, any>>;
+        const ToRegister: CommandData[] = [];
+        const ToUpdate: CommandData[] = [];
+        const ToDelete = [...ExistingCommands];
 
-        for (const command of commands) {
-            const existing = existingCommands.find((registered) => registered.name === command.name);
-            if (!existing) {
-                toRegister.push(command);
+        for (const Command of Commands) {
+            const Existing = ExistingCommands.find((Registered) => Registered.name === Command.name);
+            if (!Existing) {
+                ToRegister.push(Command);
                 continue;
             }
 
-            const isDifferent = !areCommandsEqual(existing, command);
-            if (isDifferent) {
-                toUpdate.push({ id: existing.id, ...command });
+            const IsDifferent = !AreCommandsEqual(Existing, Command);
+            if (IsDifferent) {
+                ToUpdate.push({ id: Existing.id, ...Command });
             }
 
-            const index = toDelete.indexOf(existing);
-            if (index !== -1) {
-                toDelete.splice(index, 1);
+            const Index = ToDelete.indexOf(Existing);
+            if (Index !== -1) {
+                ToDelete.splice(Index, 1);
             }
         }
 
-        for (const command of toRegister) {
-            await rest.post(route, { body: command });
-            console.log(`[COMMANDS] Novo comando registrado: ${command.name}`);
+        for (const Command of ToRegister) {
+            await Rest.post(Route, { body: Command });
+            console.log(`[COMMANDS] Novo comando registrado: ${Command.name}`);
         }
 
-        for (const command of toUpdate) {
-            await rest.patch(`${route}/${command.id}` as `/${string}`, { body: command });
-            console.log(`[COMMANDS] Comando atualizado: ${command.name}`);
+        for (const Command of ToUpdate) {
+            await Rest.patch(`${Route}/${Command.id}` as `/${string}`, { body: Command });
+            console.log(`[COMMANDS] Comando atualizado: ${Command.name}`);
         }
 
-        for (const command of toDelete) {
-            await rest.delete(`${route}/${command.id}` as `/${string}`);
-            console.log(`[COMMANDS] Comando removido: ${command.name}`);
+        for (const Command of ToDelete) {
+            await Rest.delete(`${Route}/${Command.id}` as `/${string}`);
+            console.log(`[COMMANDS] Comando removido: ${Command.name}`);
         }
 
-        console.log(`[COMMANDS] Sincronizacao ${scope} concluida.`);
-    } catch (error) {
-        console.error(`[COMMANDS] Erro ao sincronizar comandos ${scope}:`, error);
+        console.log(`[COMMANDS] Sincronizacao ${Scope} concluida.`);
+    } catch (Error) {
+        console.error(`[COMMANDS] Erro ao sincronizar comandos ${Scope}:`, Error);
     }
 }
 
-function areCommandsEqual(current: CommandData, next: CommandData): boolean {
-    return JSON.stringify(normalizeCommandData(current)) === JSON.stringify(normalizeCommandData(next));
+function AreCommandsEqual(Current: CommandData, Next: CommandData): boolean {
+    return JSON.stringify(NormalizeCommandData(Current)) === JSON.stringify(NormalizeCommandData(Next));
 }
 
-function normalizeCommandData(command: CommandData): CommandData {
+function NormalizeCommandData(Command: CommandData): CommandData {
     return {
-        name: command.name,
-        description: command.description,
-        options: normalizeOptions(command.options ?? []),
+        name: Command.name,
+        description: Command.description,
+        options: NormalizeOptions(Command.options ?? []),
     };
 }
 
-function normalizeOptions(options: CommandData[]): CommandData[] {
-    return options
-        .map((option) => {
-            const normalized: CommandData = {
-                type: option.type,
-                name: option.name,
-                description: option.description,
-                required: Boolean(option.required),
+function NormalizeOptions(Options: CommandData[]): CommandData[] {
+    return Options
+        .map((Option) => {
+            const Normalized: CommandData = {
+                type: Option.type,
+                name: Option.name,
+                description: Option.description,
+                required: Boolean(Option.required),
             };
 
-            if (option.choices) {
-                normalized.choices = [...option.choices].sort((a, b) =>
-                    a.name.localeCompare(b.name),
+            if (Option.choices) {
+                Normalized.choices = [...Option.choices].sort((A, B) =>
+                    A.name.localeCompare(B.name),
                 );
             }
 
-            if (option.options) {
-                normalized.options = normalizeOptions(option.options);
+            if (Option.options) {
+                Normalized.options = NormalizeOptions(Option.options);
             }
 
-            return normalized;
+            return Normalized;
         })
-        .sort((a, b) => a.name.localeCompare(b.name));
+        .sort((A, B) => A.name.localeCompare(B.name));
 }

@@ -6,7 +6,7 @@
     ApplicationIntegrationType
 } from 'discord.js';
 
-const command = {
+const Command = {
 
     data: new SlashCommandBuilder()
 
@@ -21,20 +21,20 @@ const command = {
             InteractionContextType.BotDM,
             InteractionContextType.PrivateChannel
         )
-        .addStringOption(option =>
-            option
+        .addStringOption(Option =>
+            Option
                 .setName('valor')
                 .setDescription('Valor para converter com a porcentagem')
                 .setRequired(true)),
 
-    async run(client: any, interaction: any) {
+    async run(Client: any, Interaction: any) {
 
-        const valorString = interaction.options.getString('valor');
-        const valor = parseFloat(valorString);
+        const ValorString = Interaction.options.getString('valor');
+        const Valor = parseFloat(ValorString);
 
-        if (isNaN(valor)) {
+        if (isNaN(Valor)) {
 
-            return interaction.reply({
+            return Interaction.reply({
 
                 content: '❌ Por favor, insira um valor numérico',
                 ephemeral: true,
@@ -43,19 +43,19 @@ const command = {
 
         }
 
-        const resultado = Math.ceil(valor / 0.7);
+        const Resultado = Math.ceil(Valor / 0.7);
 
-        const embed = new EmbedBuilder()
+        const Embed = new EmbedBuilder()
 
             .setColor('#98F768')
-            .setTitle(`70% de ${valor}`)
-            .setDescription(`${resultado}`);
+            .setTitle(`70% de ${Valor}`)
+            .setDescription(`${Resultado}`);
 
-        await interaction.reply({ embeds: [embed] });
+        await Interaction.reply({ embeds: [Embed] });
 
     },
 
 };
 
-export default command;
+export default Command;
 

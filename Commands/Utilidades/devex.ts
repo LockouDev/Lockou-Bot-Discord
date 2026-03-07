@@ -8,10 +8,10 @@ import {
 } from 'discord.js';
 
 
-const exchangeCache: Map<string, { rate: number, timestamp: number }> = new Map();
+const ExchangeCache: Map<string, { rate: number, timestamp: number }> = new Map();
 const CACHE_DURATION = 1000 * 60 * 60 * 24; // 1 Dia
 
-const translations: Record<string, Record<string, string>> = {
+const Translations: Record<string, Record<string, string>> = {
     id: {
         exchangeSelected: 'Pertukaran yang Dipilih:',
         enteredValue: 'Nilai yang Dimasukkan:',
@@ -398,15 +398,15 @@ const translations: Record<string, Record<string, string>> = {
     },
 };
 
-function getTranslation(locale: string, key: string): string {
+function GetTranslation(Locale: string, Key: string): string {
 
-    const lang = locale.split('-')[0];
+    const Lang = Locale.split('-')[0];
 
-    return translations[locale]?.[key] || translations[lang]?.[key] || translations['en-US'][key] || key;
+    return Translations[Locale]?.[Key] || Translations[Lang]?.[Key] || Translations['en-US'][Key] || Key;
 
 }
 
-const command = {
+const Command = {
 
     data: new SlashCommandBuilder()
 
@@ -450,8 +450,8 @@ const command = {
         .setIntegrationTypes(ApplicationIntegrationType.GuildInstall, ApplicationIntegrationType.UserInstall)
         .setContexts(InteractionContextType.Guild, InteractionContextType.BotDM, InteractionContextType.PrivateChannel)
 
-        .addStringOption(option =>
-            option.setName('cambio')
+        .addStringOption(Option =>
+            Option.setName('cambio')
                 .setNameLocalizations({
                     id: 'mata_uang', da: 'valuta', de: 'wechselkurs', 'en-GB': 'currency', 'en-US': 'currency',
                     'es-ES': 'divisa', 'es-419': 'divisa', fr: 'devise', hr: 'valuta', it: 'valuta', lt: 'valiuta',
@@ -506,8 +506,8 @@ const command = {
                 )
         )
 
-        .addIntegerOption(option =>
-            option.setName('valor')
+        .addIntegerOption(Option =>
+            Option.setName('valor')
                 .setNameLocalizations({
                     id: 'nilai', da: 'værdi', de: 'wert', 'en-GB': 'value', 'en-US': 'value',
                     'es-ES': 'valor', 'es-419': 'valor', fr: 'valeur', hr: 'vrijednost', it: 'valore',
@@ -532,8 +532,8 @@ const command = {
                 .setRequired(true)
         )
 
-        .addBooleanOption(option =>
-            option.setName('old_conversion_rate')
+        .addBooleanOption(Option =>
+            Option.setName('old_conversion_rate')
                 .setNameLocalizations({
                     id: 'conversao_antiga', da: 'gammel_kurs', de: 'alter_kurs', 'en-GB': 'old_conversion_rate', 'en-US': 'old_conversion_rate',
                     'es-ES': 'conversion_antigua', 'es-419': 'conversion_antigua', fr: 'conversion_ancienne', hr: 'stara_stopa',
@@ -579,8 +579,8 @@ const command = {
                 })
         )
 
-        .addBooleanOption(option =>
-            option.setName('taxa')
+        .addBooleanOption(Option =>
+            Option.setName('taxa')
                 .setNameLocalizations({
                     id: 'biaya', da: 'afgift', de: 'gebühr', 'en-GB': 'tax', 'en-US': 'tax', 'es-ES': 'tarifa',
                     'es-419': 'tarifa', fr: 'frais', hr: 'naknada', it: 'tassa', lt: 'mokestis', hu: 'díj',
@@ -625,8 +625,8 @@ const command = {
                 })
         )
 
-        .addBooleanOption(option =>
-            option.setName('fx_fee')
+        .addBooleanOption(Option =>
+            Option.setName('fx_fee')
                 .setNameLocalizations({
                     id: 'biaya_fx',
                     da: 'valutagebyr',
@@ -698,166 +698,166 @@ const command = {
                 })
         ),
 
-    async run(client: any, interaction: any) {
+    async run(Client: any, Interaction: any) {
 
-        const cambio = interaction.options.getString('cambio');
-        const valor = interaction.options.getInteger('valor');
-        const oldRate = interaction.options.getBoolean('old_conversion_rate') || false;
-        const applyTaxa = interaction.options.getBoolean('taxa') || false;
-        const applyFxFee = interaction.options.getBoolean('fx_fee') || false;
-        const locale = interaction.locale || 'en-US';
-        const isInteractionAlreadyAcknowledged = (error: any): boolean => {
-            return error?.code === 40060 || error?.rawError?.code === 40060;
+        const Cambio = Interaction.options.getString('cambio');
+        const Valor = Interaction.options.getInteger('valor');
+        const OldRate = Interaction.options.getBoolean('old_conversion_rate') || false;
+        const ApplyTaxa = Interaction.options.getBoolean('taxa') || false;
+        const ApplyFxFee = Interaction.options.getBoolean('fx_fee') || false;
+        const Locale = Interaction.locale || 'en-US';
+        const IsInteractionAlreadyAcknowledged = (Error: any): boolean => {
+            return Error?.code === 40060 || Error?.rawError?.code === 40060;
         };
 
-        const ensureInteractionAcknowledged = async (): Promise<boolean> => {
-            if (interaction.deferred || interaction.replied) {
+        const EnsureInteractionAcknowledged = async (): Promise<boolean> => {
+            if (Interaction.deferred || Interaction.replied) {
                 return true;
             }
 
             try {
-                await interaction.deferReply();
+                await Interaction.deferReply();
                 return true;
-            } catch (error) {
-                if (isInteractionAlreadyAcknowledged(error)) {
+            } catch (Error) {
+                if (IsInteractionAlreadyAcknowledged(Error)) {
                     return false;
                 }
 
-                throw error;
+                throw Error;
             }
         };
 
-        const respond = async (payload: any) => {
-            const canReply = await ensureInteractionAcknowledged();
-            if (!canReply) {
+        const Respond = async (Payload: any) => {
+            const CanReply = await EnsureInteractionAcknowledged();
+            if (!CanReply) {
                 return;
             }
 
             try {
-                await interaction.editReply(payload);
-            } catch (error) {
-                if (isInteractionAlreadyAcknowledged(error)) {
+                await Interaction.editReply(Payload);
+            } catch (Error) {
+                if (IsInteractionAlreadyAcknowledged(Error)) {
                     return;
                 }
 
-                throw error;
+                throw Error;
             }
         };
 
         try {
-            const canReply = await ensureInteractionAcknowledged();
-            if (!canReply) {
+            const CanReply = await EnsureInteractionAcknowledged();
+            if (!CanReply) {
                 return;
             }
 
-            const ConversionRate = oldRate ? 0.0035 : 0.0038;
-            let exchangeRate = 1;
+            const ConversionRate = OldRate ? 0.0035 : 0.0038;
+            let ExchangeRate = 1;
 
-            if (cambio !== 'usd') {
+            if (Cambio !== 'usd') {
 
-                const currencyPair = `USD-${cambio.toUpperCase()}`;
+                const CurrencyPair = `USD-${Cambio.toUpperCase()}`;
 
-                const jsonKey = `USD${cambio.toUpperCase()}`;
+                const JsonKey = `USD${Cambio.toUpperCase()}`;
 
-                const now = Date.now();
+                const Now = Date.now();
 
-                if (exchangeCache.has(currencyPair) && (now - exchangeCache.get(currencyPair)!.timestamp < CACHE_DURATION)) {
-                    exchangeRate = exchangeCache.get(currencyPair)!.rate;
-                    console.log(`[Cache] Taxa recuperada para ${currencyPair}: ${exchangeRate}`);
+                if (ExchangeCache.has(CurrencyPair) && (Now - ExchangeCache.get(CurrencyPair)!.timestamp < CACHE_DURATION)) {
+                    ExchangeRate = ExchangeCache.get(CurrencyPair)!.rate;
+                    console.log(`[Cache] Taxa recuperada para ${CurrencyPair}: ${ExchangeRate}`);
                 }
                 else {
-                    const apiKey = process.env.ECONOMIA_API_KEY;
+                    const ApiKey = process.env.ECONOMIA_API_KEY;
 
-                    if (!apiKey) {
+                    if (!ApiKey) {
                         console.error('ERRO CRÍTICO: ECONOMIA_API_KEY não encontrada no process.env');
                     }
 
-                    const tokenParam = apiKey ? `?token=${apiKey}` : '';
+                    const TokenParam = ApiKey ? `?token=${ApiKey}` : '';
 
-                    const url = `https://economia.awesomeapi.com.br/json/last/${currencyPair}${tokenParam}`;
+                    const Url = `https://economia.awesomeapi.com.br/json/last/${CurrencyPair}${TokenParam}`;
 
-                    const response = await fetch(url);
+                    const Response = await fetch(Url);
 
-                    if (!response.ok) {
-                        throw new Error(`Erro na API (${response.status}): ${response.statusText}`);
+                    if (!Response.ok) {
+                        throw new Error(`Erro na API (${Response.status}): ${Response.statusText}`);
                     }
 
-                    const data: any = await response.json();
+                    const Data: any = await Response.json();
 
-                    if (!data[jsonKey] || !data[jsonKey].ask) {
-                        console.error('Resposta da API:', JSON.stringify(data));
-                        throw new Error(`Moeda ${jsonKey} não encontrada na resposta.`);
+                    if (!Data[JsonKey] || !Data[JsonKey].ask) {
+                        console.error('Resposta da API:', JSON.stringify(Data));
+                        throw new Error(`Moeda ${JsonKey} não encontrada na resposta.`);
                     }
 
-                    exchangeRate = parseFloat(data[jsonKey].ask);
+                    ExchangeRate = parseFloat(Data[JsonKey].ask);
 
-                    exchangeCache.set(currencyPair, {
-                        rate: exchangeRate,
-                        timestamp: now
+                    ExchangeCache.set(CurrencyPair, {
+                        rate: ExchangeRate,
+                        timestamp: Now
                     });
 
-                    console.log(`[API] Sucesso! Nova taxa para ${jsonKey}: ${exchangeRate}`);
+                    console.log(`[API] Sucesso! Nova taxa para ${JsonKey}: ${ExchangeRate}`);
                 }
             }
 
-            let convertedValue = valor * ConversionRate;
+            let ConvertedValue = Valor * ConversionRate;
 
-            if (applyTaxa) convertedValue -= 5;
+            if (ApplyTaxa) ConvertedValue -= 5;
 
-            if (applyFxFee && cambio !== 'usd') {
-                const fxFeeRate = convertedValue <= 4999.99 ? 0.025 : 0.019;
-                convertedValue -= convertedValue * fxFeeRate;
+            if (ApplyFxFee && Cambio !== 'usd') {
+                const FxFeeRate = ConvertedValue <= 4999.99 ? 0.025 : 0.019;
+                ConvertedValue -= ConvertedValue * FxFeeRate;
             }
 
-            if (convertedValue < 0) convertedValue = 0;
+            if (ConvertedValue < 0) ConvertedValue = 0;
 
-            convertedValue *= exchangeRate;
+            ConvertedValue *= ExchangeRate;
 
-            const formatter = new Intl.NumberFormat(interaction.locale || 'en-US', {
+            const Formatter = new Intl.NumberFormat(Interaction.locale || 'en-US', {
 
                 style: 'currency',
-                currency: cambio.toUpperCase(),
+                currency: Cambio.toUpperCase(),
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
 
             });
 
-            const fields = [
+            const Fields = [
 
                 {
-                    name: getTranslation(locale, 'exchangeSelected'),
-                    value: cambio.toUpperCase(),
+                    name: GetTranslation(Locale, 'exchangeSelected'),
+                    value: Cambio.toUpperCase(),
                     inline: true
 
                 },
 
                 {
 
-                    name: getTranslation(locale, 'enteredValue'),
-                    value: `<:Robux:1311957287178469447> ${valor.toLocaleString()}`,
+                    name: GetTranslation(Locale, 'enteredValue'),
+                    value: `<:Robux:1311957287178469447> ${Valor.toLocaleString()}`,
                     inline: true
 
                 },
 
             ];
 
-            if (oldRate) {
+            if (OldRate) {
 
-                fields.push({
+                Fields.push({
 
-                    name: getTranslation(locale, 'oldConversion'),
-                    value: getTranslation(locale, 'enabled'),
+                    name: GetTranslation(Locale, 'oldConversion'),
+                    value: GetTranslation(Locale, 'enabled'),
                     inline: true
 
                 });
 
             }
 
-            if (applyTaxa) {
+            if (ApplyTaxa) {
 
-                fields.push({
+                Fields.push({
 
-                    name: getTranslation(locale, 'tax'),
+                    name: GetTranslation(Locale, 'tax'),
                     value: '-$5',
                     inline: true
 
@@ -865,61 +865,61 @@ const command = {
 
             }
 
-            if (applyFxFee) {
+            if (ApplyFxFee) {
 
-                fields.push({
+                Fields.push({
 
-                    name: getTranslation(locale, 'fxFee'),
-                    value: getTranslation(locale, 'enabled'),
+                    name: GetTranslation(Locale, 'fxFee'),
+                    value: GetTranslation(Locale, 'enabled'),
                     inline: true
 
                 });
 
             }
 
-            fields.push({
+            Fields.push({
 
-                name: getTranslation(locale, 'result'),
-                value: `${formatter.format(convertedValue)}`,
+                name: GetTranslation(Locale, 'result'),
+                value: `${Formatter.format(ConvertedValue)}`,
                 inline: false,
 
             });
 
-            const embed = new EmbedBuilder()
+            const Embed = new EmbedBuilder()
 
                 .setColor('#98F768')
                 .setTitle('<:Robux:1311957287178469447> Roblox DevEx Calculator')
-                .addFields(fields);
+                .addFields(Fields);
 
-            await respond({ embeds: [embed] });
+            await Respond({ embeds: [Embed] });
 
-        } catch (error) {
-            if (isInteractionAlreadyAcknowledged(error)) {
+        } catch (Error) {
+            if (IsInteractionAlreadyAcknowledged(Error)) {
                 return;
             }
 
-            console.error('Erro ao obter o valor de câmbio:', error);
+            console.error('Erro ao obter o valor de câmbio:', Error);
 
-            const errorEmbed = new EmbedBuilder()
+            const ErrorEmbed = new EmbedBuilder()
                 .setColor('#FF0000')
-                .setTitle(getTranslation(locale, 'errorTitle'))
-                .setDescription(getTranslation(locale, 'errorDescription'));
+                .setTitle(GetTranslation(Locale, 'errorTitle'))
+                .setDescription(GetTranslation(Locale, 'errorDescription'));
 
             try {
-                if (interaction.deferred || interaction.replied) {
-                    await interaction.editReply({ embeds: [errorEmbed] });
+                if (Interaction.deferred || Interaction.replied) {
+                    await Interaction.editReply({ embeds: [ErrorEmbed] });
                 } else {
-                    await interaction.reply({
-                        embeds: [errorEmbed],
+                    await Interaction.reply({
+                        embeds: [ErrorEmbed],
                         flags: MessageFlags.Ephemeral,
                     });
                 }
-            } catch (replyError) {
-                if (isInteractionAlreadyAcknowledged(replyError)) {
+            } catch (ReplyError) {
+                if (IsInteractionAlreadyAcknowledged(ReplyError)) {
                     return;
                 }
 
-                console.error('[DEVEX] Falha ao responder interacao com erro:', replyError);
+                console.error('[DEVEX] Falha ao responder interacao com erro:', ReplyError);
             }
 
         }
@@ -928,4 +928,4 @@ const command = {
 
 }
 
-export default command;
+export default Command;

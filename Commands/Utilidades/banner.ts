@@ -7,117 +7,117 @@ import {
     User,
 } from 'discord.js';
 
-const command = {
+const Command = {
     data: new SlashCommandBuilder()
         .setName('banner')
         .setDescription('Veja o banner de um usuário')
         .setIntegrationTypes(ApplicationIntegrationType.GuildInstall, ApplicationIntegrationType.UserInstall)
         .setContexts(InteractionContextType.Guild, InteractionContextType.BotDM, InteractionContextType.PrivateChannel)
-        .addUserOption((option) =>
-            option
+        .addUserOption((Option) =>
+            Option
                 .setName('usuario')
                 .setDescription('Usuário para ver o banner')
                 .setRequired(false),
         )
-        .addStringOption((option) =>
-            option
+        .addStringOption((Option) =>
+            Option
                 .setName('id')
                 .setDescription('ID do usuário para ver o banner')
                 .setRequired(false),
         ),
 
-    async run(client: any, interaction: CommandInteraction) {
-        if (!interaction.isChatInputCommand()) {
+    async run(Client: any, Interaction: CommandInteraction) {
+        if (!Interaction.isChatInputCommand()) {
             return;
         }
 
-        const isInteractionAlreadyAcknowledged = (error: any): boolean =>
-            error?.code === 40060 || error?.rawError?.code === 40060;
-        const isUnknownInteraction = (error: any): boolean =>
-            error?.code === 10062 || error?.rawError?.code === 10062;
-        const isInteractionNotReplied = (error: any): boolean => error?.code === 'InteractionNotReplied';
-        const isIgnorableInteractionError = (error: any): boolean =>
-            isInteractionAlreadyAcknowledged(error) || isUnknownInteraction(error) || isInteractionNotReplied(error);
+        const IsInteractionAlreadyAcknowledged = (Error: any): boolean =>
+            Error?.code === 40060 || Error?.rawError?.code === 40060;
+        const IsUnknownInteraction = (Error: any): boolean =>
+            Error?.code === 10062 || Error?.rawError?.code === 10062;
+        const IsInteractionNotReplied = (Error: any): boolean => Error?.code === 'InteractionNotReplied';
+        const IsIgnorableInteractionError = (Error: any): boolean =>
+            IsInteractionAlreadyAcknowledged(Error) || IsUnknownInteraction(Error) || IsInteractionNotReplied(Error);
 
-        const ensureInteractionAcknowledged = async (): Promise<boolean> => {
-            if (interaction.deferred || interaction.replied) {
+        const EnsureInteractionAcknowledged = async (): Promise<boolean> => {
+            if (Interaction.deferred || Interaction.replied) {
                 return true;
             }
 
             try {
-                await interaction.deferReply();
+                await Interaction.deferReply();
                 return true;
-            } catch (error) {
-                if (isIgnorableInteractionError(error)) {
+            } catch (Error) {
+                if (IsIgnorableInteractionError(Error)) {
                     return false;
                 }
 
-                throw error;
+                throw Error;
             }
         };
 
-        const respond = async (payload: any) => {
-            const canReply = await ensureInteractionAcknowledged();
-            if (!canReply) {
+        const Respond = async (Payload: any) => {
+            const CanReply = await EnsureInteractionAcknowledged();
+            if (!CanReply) {
                 return;
             }
 
             try {
-                await interaction.editReply(payload);
-            } catch (error) {
-                if (isIgnorableInteractionError(error)) {
+                await Interaction.editReply(Payload);
+            } catch (Error) {
+                if (IsIgnorableInteractionError(Error)) {
                     return;
                 }
 
-                throw error;
+                throw Error;
             }
         };
 
-        const canReply = await ensureInteractionAcknowledged();
-        if (!canReply) {
+        const CanReply = await EnsureInteractionAcknowledged();
+        if (!CanReply) {
             return;
         }
 
         try {
-            let user: User | null = interaction.options.getUser('usuario');
-            const id = interaction.options.getString('id');
+            let User: User | null = Interaction.options.getUser('usuario');
+            const Id = Interaction.options.getString('id');
 
-            if (!user && id) {
+            if (!User && Id) {
                 try {
-                    user = await client.users.fetch(id);
+                    User = await Client.users.fetch(Id);
                 } catch {
-                    await respond({
+                    await Respond({
                         content: 'Não encontrei nenhum usuário com esse ID',
                     });
                     return;
                 }
             }
 
-            if (!user) {
-                user = interaction.user;
+            if (!User) {
+                User = Interaction.user;
             }
 
-            const fetchedUser = await client.users.fetch(user.id, { force: true });
-            const bannerUrl = fetchedUser.bannerURL({ size: 4096, extension: 'png' });
+            const FetchedUser = await Client.users.fetch(User.id, { force: true });
+            const BannerUrl = FetchedUser.bannerURL({ size: 4096, extension: 'png' });
 
-            if (!bannerUrl) {
-                await respond({
-                    content: `O usuário **${user.username}** não possui banner`,
+            if (!BannerUrl) {
+                await Respond({
+                    content: `O usuário **${User.username}** não possui banner`,
                 });
                 return;
             }
 
-            const extension = bannerUrl.includes('.gif') ? 'gif' : 'png';
-            const attachment = new AttachmentBuilder(bannerUrl).setName(`banner_${user.username}.${extension}`);
+            const Extension = BannerUrl.includes('.gif') ? 'gif' : 'png';
+            const Attachment = new AttachmentBuilder(BannerUrl).setName(`banner_${User.username}.${Extension}`);
 
-            await respond({ files: [attachment] });
-        } catch (error) {
-            console.error('Erro no comando /banner:', error);
-            await respond({
+            await Respond({ files: [Attachment] });
+        } catch (Error) {
+            console.error('Erro no comando /banner:', Error);
+            await Respond({
                 content: 'Erro ao exibir o banner. Tente novamente mais tarde',
             });
         }
     },
 };
 
-export default command;
+export default Command;

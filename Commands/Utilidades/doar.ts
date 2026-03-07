@@ -1,177 +1,131 @@
-﻿import {
+import {
     InteractionContextType,
     SlashCommandBuilder,
     EmbedBuilder,
     ApplicationIntegrationType,
-    CommandInteraction,
     MessageComponentInteraction,
     ButtonBuilder,
     ActionRowBuilder,
     ButtonStyle,
     MessageFlags,
-    Component,
-    Interaction,
-    ColorResolvable
+    ColorResolvable,
+    ComponentType,
 } from 'discord.js';
-import { userInfo } from 'node:os';
 
-const command = {
-
+const Command = {
     data: new SlashCommandBuilder()
         .setName('doar')
-        .setDescription('Lista de doações para o Lockou')
+        .setDescription('Lista de doacoes para o Lockou')
         .setIntegrationTypes(
             ApplicationIntegrationType.GuildInstall,
-            ApplicationIntegrationType.UserInstall
+            ApplicationIntegrationType.UserInstall,
         )
         .setContexts(
             InteractionContextType.Guild,
             InteractionContextType.BotDM,
-            InteractionContextType.PrivateChannel
+            InteractionContextType.PrivateChannel,
         )
         .setDMPermission(true),
 
-    async run(client: any, interaction: any) {
-
-        const pixList = {
+    async run(_client: any, Interaction: any) {
+        const PixList = {
             NuBank: 'd46014ef-b202-4846-b548-8db0f5272097',
             MercadoPago: 'kaiojeffoficial@gmail.com',
             PicPay: 'e2d8456b-ef0f-4e17-868d-0893ce328823',
             RecargaPay: 'aac5200d-9153-4b42-b78e-ec6f33afa9bb',
+        };
+
+        const Embed = new EmbedBuilder()
+            .setColor('#08bfb1')
+            .setTitle('Doacoes para o Lockou')
+            .setThumbnail('https://www.advocacianunes.com.br/wp-content/uploads/2022/04/logo-pix-icone-1024.png')
+            .setDescription('Clique nos botoes abaixo para copiar as chaves Pix');
+
+        const Buttons = new ActionRowBuilder<ButtonBuilder>().addComponents(
+            new ButtonBuilder()
+                .setCustomId('nubank')
+                .setLabel('NuBank')
+                .setEmoji('1389994298233323614')
+                .setStyle(ButtonStyle.Primary),
+            new ButtonBuilder()
+                .setCustomId('mercadopago')
+                .setLabel('MercadoPago')
+                .setEmoji('1389994643680395354')
+                .setStyle(ButtonStyle.Primary),
+            new ButtonBuilder()
+                .setCustomId('picpay')
+                .setLabel('PicPay')
+                .setEmoji('1389994870189592766')
+                .setStyle(ButtonStyle.Primary),
+            new ButtonBuilder()
+                .setCustomId('recargapay')
+                .setLabel('RecargaPay')
+                .setEmoji('1389995433656451233')
+                .setStyle(ButtonStyle.Primary),
+        );
+
+        const Reply = await Interaction.reply({
+            embeds: [Embed],
+            components: [Buttons],
+            fetchReply: true,
+        });
+
+        if (!Reply || typeof (Reply as any).createMessageComponentCollector !== 'function') {
+            return;
         }
 
-        const embed = new EmbedBuilder()
-            .setColor('#08bfb1')
-            .setTitle('❤️ Doações para o Lockou ❤️')
-            .setThumbnail('https://www.advocacianunes.com.br/wp-content/uploads/2022/04/logo-pix-icone-1024.png')
-            .setDescription('Clique nos botões abaixo para copiar as chaves Pix');
-
-        /*.addFields(
-            { name: 'NuBank', value: pixList.NuBank, inline: false },
-            { name: 'MercadoPago', value: pixList.MercadoPago, inline: false },
-            { name: 'PicPay', value: pixList.PicPay, inline: false },
-            { name: 'RecargaPay', value: pixList.RecargaPay, inline: false }
-        );*/
-
-        const buttons = new ActionRowBuilder()
-
-            .addComponents(
-
-                new ButtonBuilder()
-
-                    .setCustomId('nubank')
-                    .setLabel('NuBank')
-                    .setEmoji('1389994298233323614')
-                    .setStyle(ButtonStyle.Primary),
-
-                new ButtonBuilder()
-
-                    .setCustomId('mercadopago')
-                    .setLabel('MercadoPago')
-                    .setEmoji('1389994643680395354')
-                    .setStyle(ButtonStyle.Primary),
-
-                new ButtonBuilder()
-
-                    .setCustomId('picpay')
-                    .setLabel('PicPay')
-                    .setEmoji('1389994870189592766')
-                    .setStyle(ButtonStyle.Primary),
-
-                new ButtonBuilder()
-
-                    .setCustomId('recargapay')
-                    .setLabel('RecargaPay')
-                    .setEmoji('1389995433656451233')
-                    .setStyle(ButtonStyle.Primary)
-
-            );
-
-
-        await interaction.reply({
-
-            embeds: [embed],
-            components: [buttons]
-
+        const Collector = (Reply as any).createMessageComponentCollector({
+            componentType: ComponentType.Button,
+            time: 60_000,
+            filter: (I: MessageComponentInteraction) => I.user.id === Interaction.user.id,
         });
 
-        const reply = await interaction.fetchReply();
+        Collector.on('collect', async (I: MessageComponentInteraction) => {
+            let Key = '';
+            let Icon = '';
+            let Color = '';
 
-        const collector = reply.createMessageComponentCollector({
-
-            time: 60000,
-            filter: (i: MessageComponentInteraction) => i.user.id === interaction.user.id,
-
-        });
-
-        collector.on('collect', async (i: MessageComponentInteraction) => {
-
-            let key = '';
-            let icon = '';
-            let color = '';
-
-            switch (i.customId) {
-
+            switch (I.customId) {
                 case 'nubank':
-
-                    key = pixList.NuBank;
-                    icon = 'https://i.imgur.com/T0abmEf.png';
-                    color = '#820ad1';
-
+                    Key = PixList.NuBank;
+                    Icon = 'https://i.imgur.com/T0abmEf.png';
+                    Color = '#820ad1';
                     break;
-
                 case 'mercadopago':
-
-                    key = pixList.MercadoPago;
-                    icon = 'https://i.imgur.com/bawKDe5.png';
-                    color = '#00b5ec';
-
+                    Key = PixList.MercadoPago;
+                    Icon = 'https://i.imgur.com/bawKDe5.png';
+                    Color = '#00b5ec';
                     break;
-
                 case 'picpay':
-
-                    key = pixList.PicPay;
-                    icon = 'https://i.imgur.com/QZ2f59O.png';
-                    color = '#2eb461';
-
+                    Key = PixList.PicPay;
+                    Icon = 'https://i.imgur.com/QZ2f59O.png';
+                    Color = '#2eb461';
                     break;
-
                 case 'recargapay':
-
-                    key = pixList.RecargaPay;
-                    icon = 'https://i.imgur.com/ZcY0L5P.png';
-                    color = '#053e6e';
-
+                    Key = PixList.RecargaPay;
+                    Icon = 'https://i.imgur.com/ZcY0L5P.png';
+                    Color = '#053e6e';
                     break;
-
                 default:
-
                     return;
-
             }
 
-            const embed = new EmbedBuilder()
+            const ResponseEmbed = new EmbedBuilder()
+                .setColor(Color as ColorResolvable)
+                .setAuthor({ name: Key, iconURL: Icon });
 
-                .setColor(color as ColorResolvable)
-                .setAuthor({ name: `${key}`, iconURL: icon })
-
-                await i.reply({ embeds: [embed] });
-
+            await I.reply({
+                embeds: [ResponseEmbed],
+                flags: MessageFlags.Ephemeral,
+            });
         });
 
-        collector.on('end', async () => {
-
-            if (reply && reply.deletable) {
-
-                reply.delete().catch(() => { });
-
+        Collector.on('end', async () => {
+            if ('deletable' in (Reply as any) && (Reply as any).deletable) {
+                (Reply as any).delete().catch(() => {});
             }
-
         });
-
     },
-
 };
 
-export default command;
-
+export default Command;

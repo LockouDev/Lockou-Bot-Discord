@@ -1,64 +1,64 @@
-﻿import fs from 'node:fs';
-import path from 'node:path';
+﻿import Fs from 'node:fs';
+import Path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 type EventModule = {
     name?: string;
-    execute?: (client: any) => void;
+    execute?: (Client: any) => void;
 };
 
-function collectEventFiles(dir: string, files: string[] = []): string[] {
-    const entries = fs.readdirSync(dir, { withFileTypes: true });
+function CollectEventFiles(Dir: string, Files: string[] = []): string[] {
+    const Entries = Fs.readdirSync(Dir, { withFileTypes: true });
 
-    for (const entry of entries) {
-        const fullPath = path.join(dir, entry.name);
-        if (entry.isDirectory()) {
-            collectEventFiles(fullPath, files);
+    for (const Entry of Entries) {
+        const FullPath = Path.join(Dir, Entry.name);
+        if (Entry.isDirectory()) {
+            CollectEventFiles(FullPath, Files);
             continue;
         }
 
-        if (entry.isFile() && entry.name.endsWith('.ts')) {
-            files.push(fullPath);
+        if (Entry.isFile() && Entry.name.endsWith('.ts')) {
+            Files.push(FullPath);
         }
     }
 
-    return files;
+    return Files;
 }
 
-export default async function eventsHandler(client: any): Promise<void> {
-    const eventsRoot = path.resolve(process.cwd(), 'Events');
-    if (!fs.existsSync(eventsRoot)) {
+export default async function EventsHandler(Client: any): Promise<void> {
+    const EventsRoot = Path.resolve(process.cwd(), 'Events');
+    if (!Fs.existsSync(EventsRoot)) {
         console.warn('[EVENTS] Pasta Events nao encontrada.');
         return;
     }
 
-    const eventFiles = collectEventFiles(eventsRoot);
-    const loadedByFolder: Record<string, string[]> = {};
+    const EventFiles = CollectEventFiles(EventsRoot);
+    const LoadedByFolder: Record<string, string[]> = {};
 
-    for (const eventFile of eventFiles) {
-        const imported = await import(pathToFileURL(eventFile).href);
-        const eventModule: EventModule = (imported.default ?? imported) as EventModule;
-        const eventName = eventModule.name ?? path.basename(eventFile, '.ts');
+    for (const EventFile of EventFiles) {
+        const Imported = await import(pathToFileURL(EventFile).href);
+        const EventModule: EventModule = (Imported.default ?? Imported) as EventModule;
+        const EventName = EventModule.name ?? Path.basename(EventFile, '.ts');
 
-        if (typeof eventModule.execute === 'function') {
-            eventModule.execute(client);
+        if (typeof EventModule.execute === 'function') {
+            EventModule.execute(Client);
         }
 
-        const folder =
-            path
-                .relative(eventsRoot, path.dirname(eventFile))
+        const Folder =
+            Path
+                .relative(EventsRoot, Path.dirname(EventFile))
                 .replace(/\\/g, '/') || 'root';
 
-        if (!loadedByFolder[folder]) {
-            loadedByFolder[folder] = [];
+        if (!LoadedByFolder[Folder]) {
+            LoadedByFolder[Folder] = [];
         }
 
-        loadedByFolder[folder].push(eventName);
+        LoadedByFolder[Folder].push(EventName);
     }
 
-    const summary = Object.entries(loadedByFolder)
-        .map(([folder, names]) => `[${folder}: ${names.join(', ')}]`)
+    const Summary = Object.entries(LoadedByFolder)
+        .map(([Folder, Names]) => `[${Folder}: ${Names.join(', ')}]`)
         .join(' - ');
 
-    console.log(`[EVENTS] Eventos carregados: ${summary}`);
+    console.log(`[EVENTS] Eventos carregados: ${Summary}`);
 }
