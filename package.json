@@ -1,6 +1,6 @@
 {
   "name": "lockou",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A Bot",
   "main": "index.ts",
   "scripts": {

@@ -1,7 +1,7 @@
 import {
     InteractionContextType,
     SlashCommandBuilder,
-    AttachmentBuilder,
+    EmbedBuilder,
     CommandInteraction,
     ApplicationIntegrationType,
     User,
@@ -98,7 +98,11 @@ const Command = {
             }
 
             const FetchedUser = await Client.users.fetch(User.id, { force: true });
-            const BannerUrl = FetchedUser.bannerURL({ size: 4096, extension: 'png' });
+            const IsAnimatedBanner = Boolean(FetchedUser.banner?.startsWith('a_'));
+            let BannerUrl = FetchedUser.bannerURL({ size: 1024, extension: IsAnimatedBanner ? 'gif' : 'png' });
+            if (!BannerUrl && IsAnimatedBanner) {
+                BannerUrl = FetchedUser.bannerURL({ size: 1024, extension: 'png' });
+            }
 
             if (!BannerUrl) {
                 await Respond({
@@ -107,10 +111,13 @@ const Command = {
                 return;
             }
 
-            const Extension = BannerUrl.includes('.gif') ? 'gif' : 'png';
-            const Attachment = new AttachmentBuilder(BannerUrl).setName(`banner_${User.username}.${Extension}`);
+            const Embed = new EmbedBuilder()
+                .setColor('#98F768')
+                .setTitle(`Banner de ${User.username}`)
+                .setURL(BannerUrl)
+                .setImage(BannerUrl);
 
-            await Respond({ files: [Attachment] });
+            await Respond({ content: BannerUrl, embeds: [Embed] });
         } catch (Error) {
             console.error('Erro no comando /banner:', Error);
             await Respond({

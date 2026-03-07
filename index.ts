@@ -84,7 +84,7 @@ const ClientInstance = new Client({
         StageInstanceManager: 0,
         ThreadManager: 0,
         ThreadMemberManager: 0,
-        UserManager: 200,
+        UserManager: 100,
         VoiceStateManager: 0,
     }),
     sweepers: {

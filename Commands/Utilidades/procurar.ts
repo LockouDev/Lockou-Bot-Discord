@@ -9,10 +9,29 @@ function Delay(Ms: number) {
 
 }
 
+function ParseResponseBody(Body: string): any {
+  try {
+    return JSON.parse(Body);
+  } catch {
+    const Trimmed = Body.trim();
+    if (Trimmed === 'true') return true;
+    if (Trimmed === 'false') return false;
+    return Body;
+  }
+}
+
 // Função para realizar requisição POST
-function PostRequest(Url: string, Data: any): Promise<any> {
+function PostRequest(Url: string, Data: any, TimeoutMs = 10000): Promise<any> {
 
   return new Promise((Resolve, Reject) => {
+    let TimeoutHandle: NodeJS.Timeout | null = null;
+    let Finished = false;
+    const Complete = (Fn: (Value: any) => void, Value: any) => {
+      if (Finished) return;
+      Finished = true;
+      if (TimeoutHandle) clearTimeout(TimeoutHandle);
+      Fn(Value);
+    };
 
     const JsonData = JSON.stringify(Data);
     const Req = Https.request(Url, {
@@ -25,7 +44,7 @@ function PostRequest(Url: string, Data: any): Promise<any> {
 
       },
 
-      timeout: 10000,
+      timeout: TimeoutMs,
 
     }, (Res) => {
 
@@ -33,8 +52,13 @@ function PostRequest(Url: string, Data: any): Promise<any> {
 
       Res.on('data', (Chunk) => (Body += Chunk));
       Res.on('end', () => {
+        const ParsedBody = ParseResponseBody(Body);
+        const StatusCode = Res.statusCode ?? 0;
+        if (StatusCode >= 400) {
+          return Complete(Reject, new Error(`POST ${Url} retornou ${StatusCode}`));
+        }
 
-        try { Resolve(JSON.parse(Body)); } catch { Resolve(Body); }
+        Complete(Resolve, ParsedBody);
 
       });
 
@@ -42,7 +66,14 @@ function PostRequest(Url: string, Data: any): Promise<any> {
 
     );
 
-    Req.on('error', Reject);
+    TimeoutHandle = setTimeout(() => {
+      Req.destroy(new Error(`Timeout POST ${Url}`));
+    }, TimeoutMs);
+
+    Req.on('timeout', () => {
+      Req.destroy(new Error(`Timeout POST ${Url}`));
+    });
+    Req.on('error', (Error) => Complete(Reject, Error));
     Req.write(JsonData);
     Req.end();
 
@@ -51,9 +82,17 @@ function PostRequest(Url: string, Data: any): Promise<any> {
 }
 
 // Função para realizar requisição GET
-function GetRequest(Url: string, UseCookie: boolean = false): Promise<any> {
+function GetRequest(Url: string, UseCookie: boolean = false, TimeoutMs = 10000): Promise<any> {
 
   return new Promise((Resolve, Reject) => {
+    let TimeoutHandle: NodeJS.Timeout | null = null;
+    let Finished = false;
+    const Complete = (Fn: (Value: any) => void, Value: any) => {
+      if (Finished) return;
+      Finished = true;
+      if (TimeoutHandle) clearTimeout(TimeoutHandle);
+      Fn(Value);
+    };
 
     const Headers: any = {
 
@@ -69,34 +108,32 @@ function GetRequest(Url: string, UseCookie: boolean = false): Promise<any> {
 
     }
 
-    const Req = Https.request(Url, { method: 'GET', headers: Headers, timeout: 10000 }, (Res) => {
+    const Req = Https.request(Url, { method: 'GET', headers: Headers, timeout: TimeoutMs }, (Res) => {
 
       let Body = '';
 
       Res.on('data', (Chunk) => (Body += Chunk));
       Res.on('end', () => {
-
-        try {
-
-          Resolve(JSON.parse(Body));
-
-        } catch {
-
-          const Trimmed = Body.trim();
-
-          if (Trimmed === 'true') Resolve(true);
-
-          else if (Trimmed === 'false') Resolve(false);
-
-          else Resolve(Body);
-
+        const ParsedBody = ParseResponseBody(Body);
+        const StatusCode = Res.statusCode ?? 0;
+        if (StatusCode >= 400) {
+          return Complete(Reject, new Error(`GET ${Url} retornou ${StatusCode}`));
         }
+
+        Complete(Resolve, ParsedBody);
 
       });
 
     });
 
-    Req.on('error', Reject);
+    TimeoutHandle = setTimeout(() => {
+      Req.destroy(new Error(`Timeout GET ${Url}`));
+    }, TimeoutMs);
+
+    Req.on('timeout', () => {
+      Req.destroy(new Error(`Timeout GET ${Url}`));
+    });
+    Req.on('error', (Error) => Complete(Reject, Error));
     Req.end();
 
   });
@@ -147,11 +184,15 @@ async function HasPremium(UserId: number): Promise<boolean> {
 async function FetchCounter(Url: string, Retries = 8, DelayMs = 900): Promise<string> {
   for (let Attempt = 1; Attempt <= Retries; Attempt++) {
     try {
-      const Data = await GetRequest(Url);
-      if (Data?.count != null) {
-        return String(Data.count);
+      const Data = await GetRequest(Url, false, 6000);
+      const Count = Number(Data?.count);
+      if (Number.isFinite(Count)) {
+        return String(Count);
       }
-    } catch {
+    } catch (Error) {
+      if (Attempt === Retries) {
+        console.warn(`[PROCURAR] Falha ao buscar contador em ${Url}:`, Error);
+      }
       // ignora erro e tenta novamente
     }
 
@@ -322,11 +363,14 @@ const Command = {
       await Interaction.editReply({ embeds: [Embed] });
 
       if (!Info.isBanned) {
-        const [FriendCount, FollowerCount, FollowingCount] = await Promise.all([
-          FetchCounter(`https://friends.roblox.com/v1/users/${UserId}/friends/count`),
-          FetchCounter(`https://friends.roblox.com/v1/users/${UserId}/followers/count`),
-          FetchCounter(`https://friends.roblox.com/v1/users/${UserId}/followings/count`),
+        const [FriendCountResult, FollowerCountResult, FollowingCountResult] = await Promise.allSettled([
+          FetchCounter(`https://friends.roblox.com/v1/users/${UserId}/friends/count`, 4, 700),
+          FetchCounter(`https://friends.roblox.com/v1/users/${UserId}/followers/count`, 4, 700),
+          FetchCounter(`https://friends.roblox.com/v1/users/${UserId}/followings/count`, 4, 700),
         ]);
+        const FriendCount = FriendCountResult.status === 'fulfilled' ? FriendCountResult.value : 'N/A';
+        const FollowerCount = FollowerCountResult.status === 'fulfilled' ? FollowerCountResult.value : 'N/A';
+        const FollowingCount = FollowingCountResult.status === 'fulfilled' ? FollowingCountResult.value : 'N/A';
 
         Embed.spliceFields(
           6,

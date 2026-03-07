@@ -1,7 +1,7 @@
 import {
     InteractionContextType,
     SlashCommandBuilder,
-    AttachmentBuilder,
+    EmbedBuilder,
     CommandInteraction,
     ImageURLOptions,
     ApplicationIntegrationType,
@@ -100,16 +100,18 @@ const Command = {
             }
 
             const AvatarOptions: ImageURLOptions = {
-                size: 4096,
+                size: 1024,
                 extension: User.avatar?.startsWith('a_') ? 'gif' : 'png',
             };
 
             const ImageURL = User.displayAvatarURL(AvatarOptions);
-            const Attachment = new AttachmentBuilder(ImageURL).setName(
-                `avatar_${User.username}.${AvatarOptions.extension}`,
-            );
+            const Embed = new EmbedBuilder()
+                .setColor('#98F768')
+                .setTitle(`Avatar de ${User.username}`)
+                .setURL(ImageURL)
+                .setImage(ImageURL);
 
-            await Respond({ files: [Attachment] });
+            await Respond({ content: ImageURL, embeds: [Embed] });
         } catch (Error) {
             console.error('Erro no comando /avatar:', Error);
             await Respond({

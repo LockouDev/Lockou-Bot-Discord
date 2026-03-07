@@ -111,11 +111,7 @@ const Command = {
         try {
             await Interaction.deferReply();
 
-            const [{ MercadoPagoConfig, Payment: MercadoPagoPayment }, SharpModule] = await Promise.all([
-                import('mercadopago'),
-                import('sharp'),
-            ]);
-            const Sharp = SharpModule.default;
+            const { MercadoPagoConfig, Payment: MercadoPagoPayment } = await import('mercadopago');
 
             const PaymentClient = new MercadoPagoConfig({
                 accessToken: AccessToken,
@@ -142,9 +138,7 @@ const Command = {
             }
 
             const QrCodeBuffer = Buffer.from(QrCodeBase64, 'base64');
-            const ResizedQrCode = await Sharp(QrCodeBuffer).resize(256, 256).png().toBuffer();
-
-            const Attachment = new AttachmentBuilder(ResizedQrCode, { name: 'qrcode.png' });
+            const Attachment = new AttachmentBuilder(QrCodeBuffer, { name: 'qrcode.png' });
             const Embed = new EmbedBuilder()
                 .setColor('#4DB6AC')
                 .setTitle(`Valor: R$ ${Amount.toFixed(2)}`)
