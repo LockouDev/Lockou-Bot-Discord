@@ -9,7 +9,7 @@ function Delay(Ms: number) {
 
 }
 
-// FunÃ§Ã£o para realizar requisiÃ§Ã£o POST
+// Função para realizar requisição POST
 function PostRequest(Url: string, Data: any): Promise<any> {
 
   return new Promise((Resolve, Reject) => {
@@ -50,7 +50,7 @@ function PostRequest(Url: string, Data: any): Promise<any> {
 
 }
 
-// FunÃ§Ã£o para realizar requisiÃ§Ã£o GET
+// Função para realizar requisição GET
 function GetRequest(Url: string, UseCookie: boolean = false): Promise<any> {
 
   return new Promise((Resolve, Reject) => {
@@ -103,7 +103,7 @@ function GetRequest(Url: string, UseCookie: boolean = false): Promise<any> {
 
 }
 
-// FunÃ§Ã£o para tentar buscar os dados com mÃºltiplas tentativas
+// Função para tentar buscar os dados com múltiplas tentativas
 async function FetchWithRetry<T>(Fn: () => Promise<T>, Retries = 3, DelayTime = 1000): Promise<T> {
 
   for (let I = 1; I <= Retries; I++) {
@@ -120,7 +120,7 @@ async function FetchWithRetry<T>(Fn: () => Promise<T>, Retries = 3, DelayTime = 
 
   }
 
-  throw new Error('Falha apÃ³s vÃ¡rias tentativas');
+  throw new Error('Falha após várias tentativas');
 
 }
 
@@ -164,7 +164,7 @@ async function FetchCounter(Url: string, Retries = 8, DelayMs = 900): Promise<st
 }
 
 async function FetchAllDataUntilComplete(UserId: number): Promise<any> {
-  // 1. Dados crÃ­ticos â€” sempre carregam rÃ¡pido
+  // 1. Dados críticos - sempre carregam rápido
   const [Info, Thumb, Headshot, PresenceRaw, Premium] = await Promise.all([
     GetRequest(`https://users.roblox.com/v1/users/${UserId}`),
     GetRequest(`https://thumbnails.roblox.com/v1/users/avatar?userIds=${UserId}&size=420x420&format=Png&isCircular=false`),
@@ -173,14 +173,14 @@ async function FetchAllDataUntilComplete(UserId: number): Promise<any> {
     HasPremium(UserId)
   ]);
 
-  // ValidaÃ§Ã£o dos dados essenciais
+  // Validação dos dados essenciais
   if (!Info || !Thumb?.data?.[0]?.imageUrl || !Headshot?.data?.[0]?.imageUrl) {
     throw new Error('Erro ao carregar perfil ou avatar');
   }
 
   const PresenceInfo = PresenceRaw?.userPresences?.[0] || { userPresenceType: 0 };
 
-  // 2. Contadores de amigos/seguidores/seguindo com retry (mÃ¡ximo 10 segundos)
+  // 2. Contadores de amigos/seguidores/seguindo com retry (máximo 10 segundos)
   let FriendCount = 0;
   let FollowerCount = 0;
   let FollowingCount = 0;
@@ -197,7 +197,7 @@ async function FetchAllDataUntilComplete(UserId: number): Promise<any> {
       if (Fo?.count != null) FollowerCount = Number(Fo.count);
       if (Fi?.count != null) FollowingCount = Number(Fi.count);
 
-      // Se pegou pelo menos um valor diferente de zero, jÃƒÂ¡ tÃƒÂ¡ bom (conta nova pode ser tudo 0)
+      // Se pegou pelo menos um valor diferente de zero, já tá bom (conta nova pode ser tudo 0)
       if (FriendCount > 0 || FollowerCount > 0 || FollowingCount > 0 || I >= 10) {
         break;
       }
@@ -235,7 +235,7 @@ const Command = {
 
   async run(Client: any, Interaction: any): Promise<void> {
     const Player = Interaction.options.getString('player');
-    if (!Player?.trim()) return Interaction.reply({ content: 'Nome de jogador invÃ¡lido', ephemeral: true });
+    if (!Player?.trim()) return Interaction.reply({ content: 'Nome de jogador inválido', ephemeral: true });
 
     await Interaction.deferReply();
 
@@ -250,15 +250,15 @@ const Command = {
         return Interaction.editReply({
           embeds: [new EmbedBuilder()
             .setColor('#FB5151')
-            .setTitle('<:ContentDeleted:1315331180521979904> UsuÃ¡rio nÃ£o encontrado')
-            .setDescription(`Parece que o jogador **${Player}** nÃ£o existe no Roblox`)
+            .setTitle('<:ContentDeleted:1315331180521979904> Usuário não encontrado')
+            .setDescription(`Parece que o jogador **${Player}** não existe no Roblox`)
           ]
         });
       }
 
       const UserId = PlayerData.id;
 
-      // 1. Pega os dados crÃ­ticos primeiro (rÃ¡pido)
+      // 1. Pega os dados críticos primeiro (rápido)
       const [Info, Thumb, Headshot, PresenceRaw, Premium] = await Promise.all([
         GetRequest(`https://users.roblox.com/v1/users/${UserId}`),
         GetRequest(`https://thumbnails.roblox.com/v1/users/avatar?userIds=${UserId}&size=420x420&format=Png&isCircular=false`),
@@ -289,11 +289,11 @@ const Command = {
       const PresenceText = PresenceTexts[PresenceInfo.userPresenceType] || 'Desconhecido';
 
       const DisplayNameFormatted = Info.name === Info.displayName ? Info.name : `${Info.name} (${Info.displayName})`;
-      const BanStatus = Info.isBanned ? '<:Confirm:1315286412664508426> Sim' : '<:Decline:1315286423170977803> NÃ£o';
-      const PremiumStatus = Premium ? '<:Confirm:1315286412664508426> Sim' : '<:Decline:1315286423170977803> NÃ£o';
+      const BanStatus = Info.isBanned ? '<:Confirm:1315286412664508426> Sim' : '<:Decline:1315286423170977803> Não';
+      const PremiumStatus = Premium ? '<:Confirm:1315286412664508426> Sim' : '<:Decline:1315286423170977803> Não';
       const Description = Info.description?.trim() || null;
 
-      // 2. EMBED INICIAL COM "CARREGANDO..."
+      // 2. EMBED INICIAL COM "CARREGANDO"
       const Embed = new EmbedBuilder()
         .setColor(Info.isBanned ? '#FB5151' : '#50FB5B')
         .setAuthor({ name: `Perfil de ${Info.name}`, iconURL: 'https://img.icons8.com/ios11/200/FFFFFF/roblox.png' })
@@ -305,12 +305,12 @@ const Command = {
           { name: '<:PlayerIcon:1315270644107182140> ID do Jogador', value: `\`${UserId}\``, inline: true },
           { name: '<:ContentDeleted:1315331180521979904> Conta Banida', value: BanStatus, inline: true },
           { name: '<:Premium:1315261369955913728> Premium', value: PremiumStatus, inline: true },
-          { name: '<:DateAccount:1315278306425438248> Data de CriaÃ§Ã£o', value: `<t:${JoinDateUnix}:d>`, inline: true },
+          { name: '<:DateAccount:1315278306425438248> Data de Criação', value: `<t:${JoinDateUnix}:d>`, inline: true },
           { name: '<:CreatedAccount:1315277832871739413> Idade da Conta', value: `${Math.floor((Date.now() - new Date(Info.created).getTime()) / 86400000)} dias`, inline: true },
           { name: `${PresenceIcon} Status`, value: PresenceText, inline: true },
-          { name: '<:Friends:1315278590685745205> Total de Amigos', value: 'Carregando...', inline: true },
-          { name: '<:Followers:1315279069029601371> Seguidores', value: 'Carregando...', inline: true },
-          { name: '<:Following:1315280134244401204> Seguindo', value: 'Carregando...', inline: true }
+          { name: '<:Friends:1315278590685745205> Total de Amigos', value: 'Carregando', inline: true },
+          { name: '<:Followers:1315279069029601371> Seguidores', value: 'Carregando', inline: true },
+          { name: '<:Following:1315280134244401204> Seguindo', value: 'Carregando', inline: true }
         )
         .setFooter({ text: DisplayNameFormatted, iconURL: Headshot.data[0].imageUrl })
         .setTimestamp();
@@ -339,9 +339,9 @@ const Command = {
         await Interaction.editReply({ embeds: [Embed] });
       }
     } catch (Error) {
-      console.error('Erro ao buscar informaÃ§Ãµes do jogador:', Error);
+      console.error('Erro ao buscar informações do jogador:', Error);
       await Interaction.editReply({
-        content: '<:Roblox:1314141291621126165> Ocorreu um erro ao buscar as informaÃ§Ãµes, Tente novamente mais tarde',
+        content: '<:Roblox:1314141291621126165> Ocorreu um erro ao buscar as informações, tente novamente mais tarde',
       });
     }
   }

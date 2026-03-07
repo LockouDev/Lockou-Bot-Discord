@@ -15,7 +15,7 @@ import {
 const Command = {
     data: new SlashCommandBuilder()
         .setName('doar')
-        .setDescription('Lista de doacoes para o Lockou')
+        .setDescription('Lista de doações para o Lockou')
         .setIntegrationTypes(
             ApplicationIntegrationType.GuildInstall,
             ApplicationIntegrationType.UserInstall,
@@ -37,9 +37,9 @@ const Command = {
 
         const Embed = new EmbedBuilder()
             .setColor('#08bfb1')
-            .setTitle('Doacoes para o Lockou')
+            .setTitle('Doações para o Lockou')
             .setThumbnail('https://www.advocacianunes.com.br/wp-content/uploads/2022/04/logo-pix-icone-1024.png')
-            .setDescription('Clique nos botoes abaixo para copiar as chaves Pix');
+            .setDescription('Clique nos botões abaixo para copiar as chaves Pix');
 
         const Buttons = new ActionRowBuilder<ButtonBuilder>().addComponents(
             new ButtonBuilder()

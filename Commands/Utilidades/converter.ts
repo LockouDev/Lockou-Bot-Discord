@@ -208,14 +208,14 @@ const Command = {
                                 inline: false,
                             },
                         )
-                        .setFooter({ text: 'API em rate limit. Exibindo cotação em cache' });
+                        .setFooter({ text: 'API em rate limit, exibindo cotação em cache' });
 
                     await Respond({ embeds: [Embed] });
                     return;
                 }
 
                 await Respond({
-                    content: 'A API de cotação está em rate limit. Tente novamente em alguns segundos',
+                    content: 'A API de cotação está em rate limit, tente novamente em alguns segundos',
                 });
                 return;
             }
@@ -249,7 +249,7 @@ const Command = {
                                 inline: false,
                             },
                         )
-                        .setFooter({ text: 'Resposta da API inválida. Exibindo cotação em cache' });
+                        .setFooter({ text: 'Resposta da API inválida, exibindo cotação em cache' });
 
                     await Respond({ embeds: [Embed] });
                     return;

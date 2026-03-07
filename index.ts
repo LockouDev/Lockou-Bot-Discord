@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { Client, IntentsBitField, MessageFlags, Options } from 'discord.js';
 import CommandsHandler from './Handler/commands';
 import EventsHandler from './Handler/events';
+import { RunUtf8Guard } from './Handler/Utf8Guard';
 
 type SlashCommandModule = {
     data?: {
@@ -426,6 +427,11 @@ async function Bootstrap(): Promise<void> {
     if (!DiscordToken) {
         throw new Error('A variavel DISCORD_BOT_TOKEN nao esta definida');
     }
+
+    RunUtf8Guard({
+        Strict: process.env.UTF8_GUARD !== '0',
+        Verbose: process.env.UTF8_GUARD_VERBOSE !== '0',
+    });
 
     await CommandsHandler(ClientInstance);
     await EventsHandler(ClientInstance);

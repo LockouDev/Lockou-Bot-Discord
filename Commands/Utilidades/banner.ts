@@ -114,7 +114,7 @@ const Command = {
         } catch (Error) {
             console.error('Erro no comando /banner:', Error);
             await Respond({
-                content: 'Erro ao exibir o banner. Tente novamente mais tarde',
+                content: 'Erro ao exibir o banner, tente novamente mais tarde',
             });
         }
     },

@@ -113,7 +113,7 @@ const Command = {
         } catch (Error) {
             console.error('Erro no comando /avatar:', Error);
             await Respond({
-                content: 'Erro ao exibir o avatar. Tente novamente mais tarde',
+                content: 'Erro ao exibir o avatar, tente novamente mais tarde',
             });
         }
     },

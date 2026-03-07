@@ -52,7 +52,7 @@ const Command = {
         .addStringOption((Option) =>
             Option
                 .setName('descricao')
-                .setDescription('Descricao do PIX')
+                .setDescription('Descrição do PIX')
                 .setRequired(true),
         ),
 
@@ -73,7 +73,7 @@ const Command = {
                 .setColor('Red')
                 .setTitle('Acesso negado')
                 .setDescription(
-                    'Voce nao esta autorizado(a) a usar este comando, Solicite permissao ao dono do bot',
+                    'Você não está autorizado(a) a usar este comando, solicite permissão ao dono do bot',
                 );
 
             await Interaction.reply({ embeds: [Embed], flags: MessageFlags.Ephemeral });
@@ -92,7 +92,7 @@ const Command = {
         const Description = Interaction.options.getString('descricao');
         if (!Description) {
             await Interaction.reply({
-                content: 'Descricao invalida',
+                content: 'Descrição inválida',
                 flags: MessageFlags.Ephemeral,
             });
             return;
@@ -102,7 +102,7 @@ const Command = {
         const PayerEmail = process.env.MERCADO_PAGO_EMAIL;
         if (!AccessToken || !PayerEmail) {
             await Interaction.reply({
-                content: 'Credenciais do Mercado Pago nao configuradas no .env',
+                content: 'Credenciais do Mercado Pago não configuradas no .env',
                 flags: MessageFlags.Ephemeral,
             });
             return;
@@ -151,7 +151,7 @@ const Command = {
                 .setDescription(`PIX Copiar e Colar\n\`\`\`${CopyPasteCode}\`\`\``)
                 .addFields([
                     {
-                        name: 'Descricao do Pagamento',
+                        name: 'Descrição do Pagamento',
                         value: `\`\`${Description}\`\``,
                         inline: false,
                     },
@@ -163,13 +163,13 @@ const Command = {
             console.error('[GERARPIX] Falha ao gerar pagamento PIX:', Error);
             if (Interaction.deferred || Interaction.replied) {
                 await Interaction.editReply({
-                    content: 'Ocorreu um erro ao gerar o pagamento via PIX, Tente novamente mais tarde',
+                    content: 'Ocorreu um erro ao gerar o pagamento via PIX, tente novamente mais tarde',
                 });
                 return;
             }
 
             await Interaction.reply({
-                content: 'Ocorreu um erro ao gerar o pagamento via PIX, Tente novamente mais tarde',
+                content: 'Ocorreu um erro ao gerar o pagamento via PIX, tente novamente mais tarde',
                 flags: MessageFlags.Ephemeral,
             });
         }

@@ -197,7 +197,7 @@ const Translations: Record<string, Record<string, string>> = {
         enteredValue: 'Valor Informado:',
         result: 'Resultado:',
         errorTitle: 'Erro na Conversão ❌',
-        errorDescription: 'Não foi possível obter a taxa de câmbio. Por favor, tente novamente mais tarde.',
+        errorDescription: 'Não foi possível obter a taxa de câmbio, por favor tente novamente mais tarde',
         oldConversion: 'Conversão Antiga',
         fxFee: 'FX Fee',
         tax: 'Taxa',
@@ -919,7 +919,7 @@ const Command = {
                     return;
                 }
 
-                console.error('[DEVEX] Falha ao responder interacao com erro:', ReplyError);
+                console.error('[DEVEX] Falha ao responder interação com erro:', ReplyError);
             }
 
         }
