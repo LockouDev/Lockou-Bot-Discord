@@ -24,7 +24,7 @@ function getAssetTypeLabel(assetTypeId: number): string {
     }
 
     if (assetTypeId === 12) {
-        return 'Calca';
+        return 'Calça';
     }
 
     if (assetTypeId === 2) {
@@ -142,7 +142,7 @@ async function resolveClothingImage(catalogId: number): Promise<{
 const Command = {
     data: new SlashCommandBuilder()
         .setName('roupa')
-        .setDescription('Pega a imagem 2D de uma roupa classica do Roblox')
+        .setDescription('Pega a imagem 2D de uma roupa clássica do Roblox')
         .setIntegrationTypes(ApplicationIntegrationType.GuildInstall, ApplicationIntegrationType.UserInstall)
         .setContexts(
             InteractionContextType.Guild,
@@ -152,7 +152,7 @@ const Command = {
         .addStringOption((Option) =>
             Option
                 .setName('id')
-                .setDescription('ID da roupa no catalogo do Roblox')
+                .setDescription('ID da roupa no catálogo do Roblox')
                 .setRequired(true),
         ),
 
